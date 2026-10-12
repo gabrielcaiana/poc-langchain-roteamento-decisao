@@ -1,0 +1,26 @@
+
+=== clarificacao  (provedor: msd1) ===
+
+👤 não tô satisfeito
+   ↳ [msd1] devolucao=0.68 fora_de_escopo=0.32 suporte=0.00 financeiro=0.00 | conf=0.68 τ=0.75 → clarificacao (baixa_confianca)
+🤖 [clarificacao] Entendo. Para eu te ajudar da melhor forma, você gostaria de falar sobre a devolução de algum produto ou é sobre outro assunto?
+
+👤 o fone do pedido 10418 parou de funcionar, quero trocar
+   ↳ [msd1] devolucao=1.00 fora_de_escopo=0.00 suporte=0.00 financeiro=0.00 | conf=1.00 τ=0.75 → devolucao (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10418"}); consultar_politica({"tema": "troca e defeito"})
+🤖 [devolucao] Vi aqui que o pedido 10418 (Fone Bluetooth X1) já está com uma devolução em andamento! 
+
+Como ele tem 11 dias da entrega e apresentou defeito, ele está dentro do prazo de troca (eletrônicos têm até 90 dias de garantia). 
+
+Você gostaria de atualizar ou verificar o status dessa solicitação que já está aberta, ou ficou alguma dúvida sobre o processo?
+
+👤 e o fone veio com defeito e ainda fui cobrado de novo no pix, como fica?
+   ↳ [msd1] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10418"}); consultar_politica({"tema": "cobranca duplicada"}); abrir_chamado_financeiro({"tipo": "estorno_duplicidade", "valor": 199.9, "numero_pedido": "10418"})
+🤖 [financeiro] Sinto muito pelo transtorno com a cobrança em duplicidade e o defeito do fone. 
+
+Já abri um chamado financeiro (protocolo **FIN-10418-001**) referente ao valor de R$ 199,90. O estorno da cobrança duplicada será feito em até 7 dias úteis após a confirmação.
+
+Como o fone já está em processo de devolução por defeito, assim que o item chegar até nós e for conferido, seguimos com o reembolso total ou troca, conforme sua preferência. Posso ajudar com mais alguma coisa?
+
+Custo desta execução: US$0.00203 | ledger acumulado: US$0.0409

@@ -1,0 +1,21 @@
+
+=== troca_de_assunto  (provedor: msd1>jev>llm) ===
+
+👤 oi, meu tênis do pedido 10405 ainda não chegou, cadê?
+   ↳ [jev] suporte=1.00 devolucao=0.00 financeiro=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → suporte (confiante) fallback: RuntimeError: HTTP 503 no endpoint de decisões (queda simulada)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10405"})
+🤖 [suporte] O seu Tênis Corrida Leve está a caminho! O status atual do pedido 10405 é "em trânsito". Logo ele chega no seu endereço. Se precisar de mais alguma ajuda, estou à disposição!
+
+👤 aproveitando, vi que me cobraram duas vezes esse pedido no pix
+   ↳ [jev] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante) fallback: RuntimeError: HTTP 503 no endpoint de decisões (queda simulada)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10405"}); consultar_politica({"tema": "cobrança duplicada pix"}); abrir_chamado_financeiro({"tipo": "estorno_duplicidade", "numero_pedido": "10405", "valor": 349})
+🤖 [financeiro] Verifiquei aqui e constam duas cobranças de R$ 349,00 no pedido 10405. Já abri o chamado financeiro (protocolo FIN-10405-001) para resolver isso para você. O estorno da cobrança em duplicidade é feito em até 7 dias úteis após a confirmação. 
+
+Peço desculpas pelo transtorno e estou à disposição se precisar de algo mais!
+
+👤 beleza, e em quanto tempo volta o dinheiro?
+   ↳ [jev] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante) fallback: RuntimeError: HTTP 503 no endpoint de decisões (queda simulada)
+   ↳ ferramentas: consultar_politica({"tema": "estorno duplicidade pix"})
+🤖 [financeiro] O estorno da cobrança em duplicidade é feito em até 7 dias úteis após a confirmação, conforme a nossa política. Fique tranquilo que o valor será devolvido! Se tiver mais alguma dúvida, é só falar.
+
+Custo desta execução: US$0.00217 | ledger acumulado: US$0.0271

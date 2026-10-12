@@ -1,0 +1,101 @@
+
+=== troca_de_assunto  (provedor: msd1) ===
+
+👤 oi, meu tênis do pedido 10405 ainda não chegou, cadê?
+   ↳ [msd1] suporte=1.00 devolucao=0.00 financeiro=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → suporte (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10405"})
+🤖 [suporte] Olá! Olhei aqui e o seu Tênis Corrida Leve está **em trânsito**, a caminho do seu endereço. Como foi enviado recentemente, peço só mais um pouquinho de paciência para a entrega. Assim que houver atualização, você receberá por aqui!
+
+👤 aproveitando, vi que me cobraram duas vezes esse pedido no pix
+   ↳ [msd1] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10405"}); consultar_politica({"tema": "estorno cobranca em duplicidade"}); abrir_chamado_financeiro({"numero_pedido": "10405", "tipo": "estorno_duplicidade", "valor": 349})
+🤖 [financeiro] Verifiquei aqui e realmente constam duas cobranças de R$ 349,00 via Pix para o pedido 10405. Já abri um chamado financeiro para a devolução do valor cobrado em duplicidade (protocolo **FIN-10405-001**). 
+
+Conforme a nossa política, o estorno será concluído em até **7 dias úteis** na mesma conta usada para o pagamento. Peço desculpas pelo transtorno e sigo à disposição!
+
+👤 beleza, e em quanto tempo volta o dinheiro?
+   ↳ [msd1] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante)
+🤖 [financeiro] Conforme a nossa política, o estorno do valor pago em duplicidade será concluído em até **7 dias úteis**, diretamente na mesma conta que você utilizou para fazer o Pix. Qualquer dúvida, estou por aqui!
+
+=== devolucao_natural  (provedor: msd1) ===
+
+👤 comprei uma camiseta e ficou enorme em mim kkk
+   ↳ [msd1] devolucao=1.00 fora_de_escopo=0.00 suporte=0.00 financeiro=0.00 | conf=1.00 τ=0.75 → devolucao (confiante)
+🤖 [devolucao] Poxa, que pena que a camiseta ficou grande! Mas não se preocupe, a gente dá um jeito nisso. 
+
+Para eu conferir a elegibilidade para troca ou devolução, você poderia me informar o **número do seu pedido** (são 5 dígitos, tipo 10412)?
+
+👤 é o 10454, chegou faz uns 5 dias
+   ↳ [msd1] devolucao=1.00 suporte=0.00 financeiro=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → devolucao (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10454"}); consultar_politica({"tema": "troca e devolucao"})
+🤖 [devolucao] Perfeito! O pedido 10454 foi entregue há 5 dias, então estamos dentro do prazo de 7 dias para devolução ou troca por arrependimento/tamanho, e o produto precisa estar sem uso, combinado?
+
+Você prefere fazer a **troca** por outro tamanho ou a **devolução** com reembolso? Se quiser, já posso abrir a solicitação para você!
+
+👤 pode sim, quero devolver, ela nem foi usada
+   ↳ [msd1] devolucao=1.00 financeiro=0.00 fora_de_escopo=0.00 suporte=0.00 | conf=1.00 τ=0.75 → devolucao (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10454"}); abrir_solicitacao_devolucao({"item": "Camiseta Básica", "numero_pedido": "10454", "motivo": "Tamanho inadequado (ficou grande)"})
+🤖 [devolucao] Pronto! Já abri a solicitação de devolução da **Camiseta Básica** do pedido 10454. 
+
+O seu protocolo é **DEV-10454-002**. Você receberá em breve um e-mail com a etiqueta de postagem para enviar o produto de volta para nós (sem custo). Assim que o item chegar e passar pela conferência, o reembolso será processado via Pix! 
+
+Mais alguma dúvida ou posso ajudar em algo mais?
+
+👤 valeu! e o reembolso cai como? paguei no cartão
+   ↳ [msd1] financeiro=0.96 devolucao=0.04 suporte=0.00 fora_de_escopo=0.00 | conf=0.96 τ=0.75 → financeiro (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10454"})
+🤖 [financeiro] Como o pagamento foi feito via Pix (conforme o registro do pedido 10454), o reembolso de R$ 59,90 será creditado diretamente na mesma conta em até **5 dias úteis** após o recebimento e conferência do produto em nosso centro de distribuição. 
+
+Mais alguma dúvida sobre o processo?
+
+=== clarificacao  (provedor: msd1) ===
+
+👤 não tô satisfeito
+   ↳ [msd1] devolucao=0.68 fora_de_escopo=0.32 suporte=0.00 financeiro=0.00 | conf=0.68 τ=0.75 → clarificacao (baixa_confianca)
+🤖 [clarificacao] Poxa, sinto muito por isso. Poderia me contar o que aconteceu com o seu produto ou pedido para eu te ajudar da melhor forma?
+
+👤 o fone do pedido 10418 parou de funcionar, quero trocar
+   ↳ [msd1] devolucao=1.00 fora_de_escopo=0.00 suporte=0.00 financeiro=0.00 | conf=1.00 τ=0.75 → devolucao (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10418"}); consultar_politica({"tema": "troca e devolucao"})
+🤖 [devolucao] Vi aqui que o seu pedido do **Fone Bluetooth X1** já está com uma solicitação de **devolução em andamento** há 11 dias da entrega (e eletrônicos têm até 30/90 dias para defeito). 
+
+Como já temos um processo aberto para esse pedido, você gostaria de verificar o andamento dele ou precisa alterar alguma informação?
+
+👤 e o fone veio com defeito e ainda fui cobrado de novo no pix, como fica?
+   ↳ [msd1] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10418"}); consultar_politica({"tema": "cobranca duplicada pix"}); abrir_chamado_financeiro({"valor": 199.9, "numero_pedido": "10418", "tipo": "estorno_duplicidade"})
+🤖 [financeiro] Peço desculpas pelo transtorno com a cobrança em duplicidade e pelo defeito no fone! 
+
+Já abri o chamado financeiro (protocolo **FIN-10418-003**) para o estorno de R$ 199,90 da cobrança duplicada via Pix. O prazo para a restituição é de até **7 dias úteis** após a confirmação.
+
+Quanto à troca por defeito do Fone Bluetooth X1, vi que sua devolução já está em andamento (estamos no 11º dia, dentro do prazo de 90 dias para eletrônicos). Assim que o item retornar e for conferido, seguiremos com os próximos passos. Posso ajudar com mais alguma dúvida?
+
+=== fora_de_escopo_no_meio  (provedor: msd1) ===
+
+👤 meu pedido 10412 ainda dá tempo de mudar o endereço? mudei de apartamento
+   ↳ [msd1] suporte=1.00 devolucao=0.00 financeiro=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → suporte (confiante)
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10412"})
+🤖 [suporte] Olá! O seu pedido 10412 ainda está com o status de "processando", então dá tempo de alterar o endereço sim. 
+
+Por favor, me informe o seu novo endereço completo (com rua, número, complemento, bairro, cidade, estado e CEP) para que eu possa fazer a alteração para você.
+
+👤 rua das flores 123, apto 45, são paulo
+   ↳ [msd1] suporte=1.00 devolucao=0.00 financeiro=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → suporte (confiante)
+   ↳ ferramentas: atualizar_endereco({"novo_endereco": "rua das flores 123, apto 45, são paulo", "numero_pedido": "10412"})
+🤖 [suporte] Prontinho! O endereço de entrega do pedido 10412 foi atualizado com sucesso para: Rua das Flores, 123, Apto 45, São Paulo. 
+
+Mais alguma coisa em que posso ajudar?
+
+👤 aliás, você sabe se vai chover amanhã em SP?
+   ↳ [msd1] fora_de_escopo=1.00 suporte=0.00 devolucao=0.00 financeiro=0.00 | conf=1.00 τ=0.75 → fora_de_escopo (confiante)
+🤖 [fora_de_escopo] Haha, quem dera! Eu adoraria ajudar com a previsão do tempo, mas por aqui só consigo cuidar de pedidos, entregas, trocas e pagamentos da LojaExemplo. 
+
+Se precisar de mais alguma ajuda com a sua compra, é só me chamar!
+
+👤 ok rs. então o endereço já ficou certo né?
+   ↳ [msd1] suporte=1.00 fora_de_escopo=0.00 devolucao=0.00 financeiro=0.00 | conf=1.00 τ=0.75 → suporte (confiante)
+🤖 [suporte] Sim, certíssimo! O novo endereço (Rua das Flores, 123, Apto 45, São Paulo) já foi atualizado com sucesso no seu pedido 10412. Agora é só aguardar a entrega! 
+
+Precisa de mais alguma coisa por enquanto?
+
+Custo desta execução: US$0.00824 | ledger acumulado: US$0.0181

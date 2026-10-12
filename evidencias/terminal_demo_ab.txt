@@ -1,0 +1,44 @@
+
+=== troca_de_assunto  (provedor: ab(msd1|jev)) ===
+
+👤 oi, meu tênis do pedido 10405 ainda não chegou, cadê?
+   ↳ [jev] suporte=1.00 devolucao=0.00 financeiro=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → suporte (confiante) braço A/B: jev
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10405"})
+🤖 [suporte] Olá! Vi aqui que o seu **Tênis Corrida Leve** (pedido 10405) já foi enviado e está **em trânsito** para o seu endereço. 
+
+Como foi pago via Pix, o envio é agilizado, mas os prazos da transportadora continuam valendo. Você pode acompanhar a movimentação por aí. Tem alguma outra dúvida ou posso ajudar com algo mais?
+
+👤 aproveitando, vi que me cobraram duas vezes esse pedido no pix
+   ↳ [jev] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante) braço A/B: jev
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10405"}); consultar_politica({"tema": "estorno duplicidade pix"}); abrir_chamado_financeiro({"valor": 349, "numero_pedido": "10405", "tipo": "estorno_duplicidade"})
+🤖 [financeiro] Confirmei aqui no sistema que constam duas cobranças de R$ 349,00 referentes ao pedido 10405. Já abri um chamado financeiro para a regularização (protocolo **FIN-10405-001**). 
+
+Conforme a nossa política, o estorno da cobrança duplicada via Pix será processado em **até 7 dias úteis**. Peço desculpas pelo transtorno e fico à disposição!
+
+👤 beleza, e em quanto tempo volta o dinheiro?
+   ↳ [jev] financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → financeiro (confiante) braço A/B: jev
+🤖 [financeiro] O estorno do valor duplicado será processado em **até 7 dias úteis**, ok? O dinheiro cairá na mesma conta de onde foi feito o Pix. Qualquer dúvida nesse meio tempo, é só chamar!
+
+=== clarificacao  (provedor: ab(msd1|jev)) ===
+
+👤 não tô satisfeito
+   ↳ [jev] fora_de_escopo=0.56 suporte=0.38 devolucao=0.06 financeiro=0.00 | conf=0.56 τ=0.75 → clarificacao (baixa_confianca) braço A/B: jev
+🤖 [clarificacao] Poxa, sinto muito por isso. Poderia me contar o que aconteceu para que eu possa te ajudar a resolver da melhor forma?
+
+👤 o fone do pedido 10418 parou de funcionar, quero trocar
+   ↳ [jev] devolucao=1.00 suporte=0.00 financeiro=0.00 fora_de_escopo=0.00 | conf=1.00 τ=0.75 → devolucao (confiante) braço A/B: jev
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10418"}); consultar_politica({"tema": "troca e devolucao"})
+🤖 [devolucao] Vi aqui que para o pedido **10418** (Fone Bluetooth X1) já consta uma **devolução em andamento**. 
+
+Como o fone parou de funcionar e faz 11 dias que foi entregue, você está dentro do prazo de 90 dias para defeitos em eletrônicos. Você gostaria de cancelar essa devolução que está em andamento para abrir uma nova solicitação de troca, ou prefere continuar com o processo atual?
+
+👤 e o fone veio com defeito e ainda fui cobrado de novo no pix, como fica?
+   ↳ [jev] financeiro=0.77 devolucao=0.23 suporte=0.00 fora_de_escopo=0.00 | conf=0.77 τ=0.75 → financeiro (confiante) braço A/B: jev
+   ↳ ferramentas: buscar_pedido({"numero_pedido": "10418"}); consultar_politica({"tema": "cobranca duplicada"}); abrir_chamado_financeiro({"numero_pedido": "10418", "tipo": "estorno_duplicidade", "valor": 199.9})
+🤖 [financeiro] Sinto muito pelo transtorno com o fone e pela cobrança indevida! 
+
+Já abri um chamado para o estorno da cobrança duplicada no valor de R$ 199,90 (protocolo **FIN-10418-002**), que será realizado em até 7 dias úteis conforme nossa política. 
+
+Sobre a troca do fone por defeito (estamos no prazo de 90 dias, já que faz 11 dias da entrega), você prefere continuar com o processo de devolução que já está em andamento para emitirmos um novo produto após o recebimento, ou precisa de ajuda com outra coisa?
+
+Custo desta execução: US$0.00433 | ledger acumulado: US$0.0315

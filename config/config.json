@@ -1,0 +1,12 @@
+{
+  "decisao": {
+    "provedor": "msd1",
+    "_provedores_validos": "msd1 | jev | llm | msd1+fallback | ab",
+    "modelos": {"msd1": "microsoft/microsoft-decision-1", "jev": "typesafe/jev-1.13"},
+    "tau": 0.75,
+    "historico_turnos": 6,
+    "ab_proporcao_jev": 0.5
+  },
+  "geracao": {"modelo": "google/gemini-3.5-flash-lite", "max_tokens": 500, "temperatura": 0.3},
+  "orcamento": {"teto_poc_usd": 3.0, "parar_em_usd": 2.8}
+}
