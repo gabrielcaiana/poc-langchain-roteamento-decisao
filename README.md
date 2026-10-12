@@ -18,6 +18,10 @@ Uma coisa eu decidi desde o início: **nada de fluxo engessado**. O bot não tem
 
 Desenhei o diagrama no estilo Excalidraw (rough.js + fonte Excalifont), com o código em [`docs/diagrama/`](docs/diagrama). Há também uma versão estática 1200×627 em [`evidencias/arquitetura-thumb.png`](evidencias/arquitetura-thumb.png). O mesmo fluxo em Mermaid:
 
+[![Diagrama grafo-roteamento](evidencias/diagramas/grafo-roteamento.png)](evidencias/diagramas/grafo-roteamento.svg)
+
+<details><summary>Fonte Mermaid</summary>
+
 ```mermaid
 flowchart LR
     U(["Mensagem do cliente"]) --> C["classificar<br/>(ClassificadorIntencao: Runnable)"]
@@ -40,9 +44,15 @@ flowchart LR
     C -.usa.-> P
 ```
 
+</details>
+
 O LangGraph aqui faz **só orquestração de handoff**: um nó `classificar` e um nó por subagente, cada um terminando em `END`. O grafo não modela etapas do atendimento; a "etapa" em que a conversa está fica no histórico de mensagens, e quem cuida dela é o subagente.
 
 ### Um turno, passo a passo
+
+[![Diagrama sequencia-turno](evidencias/diagramas/sequencia-turno.png)](evidencias/diagramas/sequencia-turno.svg)
+
+<details><summary>Fonte Mermaid</summary>
 
 ```mermaid
 sequenceDiagram
@@ -63,8 +73,10 @@ sequenceDiagram
     A->>T: buscar_pedido(10405), consultar_politica, abrir_chamado_financeiro
     T-->>A: dados fictícios
     A-->>G: resposta final (AIMessage name="financeiro")
-    G-->>Cli: resposta; estado e trilha de roteamento salvos
+    G-->>Cli: resposta (estado e trilha de roteamento salvos)
 ```
+
+</details>
 
 ### Por que LangChain + LangGraph (em Python)
 
