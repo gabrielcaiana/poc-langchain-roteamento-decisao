@@ -1,0 +1,60 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+@font-face{font-family:'EF0';src:url('fonts/ef_349fac6ca4700ffec595a7150a0d1e1d.woff2') format('woff2')}
+@font-face{font-family:'EF1';src:url('fonts/ef_3f2c5db56cc93c5a6873b1361d730c16.woff2') format('woff2')}
+@font-face{font-family:'EF2';src:url('fonts/ef_41b173a47b57366892116a575a43e2b6.woff2') format('woff2')}
+@font-face{font-family:'EF3';src:url('fonts/ef_623ccf21b21ef6b3a0d87738f77eb071.woff2') format('woff2')}
+@font-face{font-family:'EF4';src:url('fonts/ef_a88b72a24fb54c9f94e3b5fdaa7481c9.woff2') format('woff2')}
+@font-face{font-family:'EF5';src:url('fonts/ef_b9dcf9d2e50a1eaf42fc664b50a3fd0d.woff2') format('woff2')}
+@font-face{font-family:'EF6';src:url('fonts/ef_be310b9bcd4f1a43f571c46df7809174.woff2') format('woff2')}
+html,body{margin:0;background:#fff}
+svg text{font-family:'EF0','EF1','EF2','EF3','EF4','EF5','EF6','Caveat',cursive;fill:#1e1e1e}
+.st{transition:none}
+</style><script src="rough.js"></script></head><body>
+<svg id="s" width="1200" height="627" viewBox="0 0 1200 627" xmlns="http://www.w3.org/2000/svg"></svg>
+<script>
+const svg=document.getElementById('s'), rc=rough.svg(svg);
+const C={azul:'#a5d8ff',verde:'#b2f2bb',roxo:'#d0bfff',amarelo:'#ffec99',laranja:'#ffd8a8',cinza:'#e9ecef',rosa:'#ffc9c9'};
+const grupos=[]; let cur=null, seed=1;
+function step(){cur=document.createElementNS('http://www.w3.org/2000/svg','g');cur.setAttribute('class','st');cur.style.opacity=0;svg.appendChild(cur);grupos.push(cur);}
+const o=(x)=>Object.assign({seed:seed++,roughness:1.3,bowing:1.2,strokeWidth:2,stroke:'#1e1e1e',fillStyle:'hachure',hachureGap:7,fillWeight:1.2},x||{});
+function txt(x,y,s,size=22,anchor='middle',color){const lines=s.split('\n');lines.forEach((l,i)=>{const t=document.createElementNS('http://www.w3.org/2000/svg','text');t.setAttribute('x',x);t.setAttribute('y',y+(i-(lines.length-1)/2)*size*1.05+size*0.35);t.setAttribute('font-size',size);t.setAttribute('text-anchor',anchor);if(color)t.style.fill=color;t.textContent=l;cur.appendChild(t);});}
+function box(x,y,w,h,label,fill,size=22){cur.appendChild(rc.rectangle(x,y,w,h,o({fill})));if(label)txt(x+w/2,y+h/2,label,size);}
+function elipse(x,y,w,h,label,fill,size=22){cur.appendChild(rc.ellipse(x+w/2,y+h/2,w,h,o({fill})));txt(x+w/2,y+h/2,label,size);}
+function losango(cx,cy,w,h,label,fill){cur.appendChild(rc.polygon([[cx,cy-h/2],[cx+w/2,cy],[cx,cy+h/2],[cx-w/2,cy]],o({fill})));txt(cx,cy,label,20);}
+function seta(pts,label,lx,ly,cor='#1e1e1e',size=17){cur.appendChild(rc.curve(pts,o({stroke:cor,roughness:0.9})));const [a,b]=[pts[pts.length-2],pts[pts.length-1]];const ang=Math.atan2(b[1]-a[1],b[0]-a[0]),L=13;
+ cur.appendChild(rc.linearPath([[b[0]-L*Math.cos(ang-0.45),b[1]-L*Math.sin(ang-0.45)],b,[b[0]-L*Math.cos(ang+0.45),b[1]-L*Math.sin(ang+0.45)]],o({stroke:cor,roughness:0.6})));if(label)txt(lx,ly,label,size,'middle',cor);}
+
+// 0 título
+step(); txt(600,38,'Quem atende cada mensagem? Roteamento com modelo de decisão',32); txt(600,70,'LangGraph + subagentes LangChain · LojaExemplo (fictícia)',19,'middle','#868e96');
+// 1 cliente
+step(); elipse(25,250,170,95,'mensagem\ndo cliente',C.azul);
+// 2 camada de decisão
+step(); box(235,135,240,300,'',null); txt(355,160,'Camada de decisão',22); txt(355,183,'(Runnable · flag de config)',15,'middle','#868e96');
+ box(260,205,190,48,'MSD1',C.roxo); box(260,290,190,48,'Jev',C.roxo); box(260,375,190,48,'LLM (plano B)',C.cinza,19);
+ seta([[195,297],[235,290]]);
+// 3 fallback
+step(); seta([[300,253],[300,290]],'falhou?',357,272,'#c92a2a',16); seta([[300,338],[300,375]],'falhou?',357,357,'#c92a2a',16);
+ txt(355,447,'ou A/B por conversa',16,'middle','#868e96');
+// 4 probabilidades + limiar
+step(); seta([[475,285],[540,285]]); txt(512,250,'p por opção',15,'middle','#1971c2');
+ losango(625,285,170,120,'confiança\n≥ τ ?',C.amarelo);
+// 5 subagentes
+step(); const sx=760,w=190,h=50; 
+ box(sx,95,w,h,'devolução',C.verde); box(sx,160,w,h,'suporte',C.verde); box(sx,225,w,h,'financeiro',C.verde);
+ seta([[690,265],[730,150],[760,120]],'sim',715,180,'#2f9e44'); seta([[705,280],[760,185]]); seta([[710,285],[760,250]]);
+// 6 clarificação / fora
+step(); box(sx,330,w,h,'clarificação',C.laranja); box(sx,395,w,h,'fora de escopo',C.cinza,20);
+ seta([[625,345],[660,370],[760,355]],'não',690,385,'#e8590c'); seta([[690,300],[740,400],[760,420]],'',0,0);
+ txt(855,470,'mesma intenção de quem já atende → continua',15,'middle','#868e96');
+// 7 ferramentas
+step(); box(1000,95,180,180,'',C.amarelo); txt(1090,118,'ferramentas',21); txt(1090,200,'buscar_pedido\nconsultar_politica\nabrir_devolucao\nabrir_chamado\natualizar_endereco',15);
+ seta([[950,120],[1000,150]]); seta([[950,185],[1000,185]]); seta([[950,250],[1000,220]]);
+ txt(855,300,'agentes ReAct: decidem o que\nperguntar e quando agir',15,'middle','#868e96');
+// 8 resposta
+step(); elipse(1005,330,175,85,'resposta',C.azul); seta([[950,355],[1005,370]]); seta([[950,420],[1005,385]]);
+// 9 memória
+step(); box(25,500,220,70,'memória da conversa\n(checkpointer · thread_id)',C.rosa,17);
+ seta([[1090,415],[1060,560],[245,540]],'histórico + quem está atendendo',650,575,'#c2255c'); seta([[110,500],[110,345]],'',0,0,'#c2255c');
+window.N=grupos.length;
+window.mostrar=(k,frac)=>{grupos.forEach((g,i)=>g.style.opacity=i<k?1:(i===k?frac:0));};
+</script></body></html>

@@ -29,7 +29,8 @@ st.title("💬 LojaExemplo — atendimento pós-venda (fictício)")
 col_chat, col_rota = st.columns([3, 2])
 pergunta = st.chat_input("Escreva como um cliente escreveria…")
 if pergunta:
-    resp, d = conversar(app, st.session_state.cid, pergunta)
+    with st.spinner("decidindo quem atende e respondendo…"):
+        resp, d = conversar(app, st.session_state.cid, pergunta)
     st.session_state.hist.append((pergunta, resp, d))
 
 with col_chat:

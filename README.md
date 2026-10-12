@@ -2,9 +2,9 @@
 
 > Nesta POC eu monto um chatbot de pós-venda **conversacional** (LojaExemplo, loja fictícia) com **subagentes LangChain** (devolução, suporte, financeiro, além de clarificação e fora de escopo), em que o **Microsoft-Decision-1 (MSD1)** decide, a cada mensagem, qual subagente responde. A camada de decisão fica atrás de uma interface de provedor, e eu troco o MSD1 pelo **Jev** (TypeSafe) mudando só uma flag. O objetivo aqui é **arquitetura**, não benchmark de custo ou velocidade. Gastei **US$0,07** de API no total.
 
-Este é o primeiro artigo da série. No [próximo, a POC `poc-modelos-de-decisao`](https://github.com/gabrielcaiana/poc-modelos-de-decisao), eu meço a fundo o MSD1 como roteador e como seletor de modelo por complexidade (custo × qualidade, 1000 conversas).
+![Demonstração real da interface: clarificação, devolução e troca de assunto para o financeiro](evidencias/gifs/produto.gif)
 
-![Interface com o roteamento por turno](evidencias/screenshots/ui_msd1.png)
+*Gravação real (Streamlit + OpenRouter, sem cortes, 40 s): a primeira mensagem fica abaixo do τ e vira clarificação, a segunda vai para devolução e a terceira troca de assunto para o financeiro. À direita, as probabilidades do MSD1 em cada turno.*
 
 ## Por que eu fiz isso
 
@@ -13,6 +13,10 @@ Quase todo tutorial de "multiagente" usa um LLM gerativo como roteador: um promp
 Uma coisa eu decidi desde o início: **nada de fluxo engessado**. O bot não tem menus, formulários nem uma sequência fixa de passos. O cliente escreve do jeito que quiser, o subagente é um agente de verdade (LLM com ferramentas) que decide sozinho o que perguntar e quando agir, e a cada mensagem o modelo de decisão responde só uma pergunta: *quem atende agora?* Com isso, troca de assunto, follow-up e clarificação acontecem dentro da própria conversa.
 
 ## Arquitetura
+
+![Fluxo completo animado](evidencias/gifs/arquitetura.gif)
+
+Desenhei o diagrama no estilo Excalidraw (rough.js + fonte Excalifont), com o código em [`docs/diagrama/`](docs/diagrama). Há também uma versão estática 1200×627 em [`evidencias/arquitetura-thumb.png`](evidencias/arquitetura-thumb.png). O mesmo fluxo em Mermaid:
 
 ```mermaid
 flowchart LR
@@ -187,7 +191,7 @@ Na interface com o Jev ([screenshot](evidencias/screenshots/ui_jev.png)), a mesm
 
 **Troca de provedor**: as mesmas conversas rodaram com [Jev](evidencias/terminal_demo_jev.txt), em [A/B](evidencias/terminal_demo_ab.txt) e com [fallback](evidencias/terminal_demo_fallback.txt). No fallback, simulei um 503 do MSD1 e todos os turnos foram atendidos pelo Jev, com `fallback: RuntimeError: HTTP 503 ... (queda simulada)` registrado no trace.
 
-**Interface**: [`ui_msd1.png`](evidencias/screenshots/ui_msd1.png) e [`ui_jev.png`](evidencias/screenshots/ui_jev.png), capturadas com Playwright em modo headless contra o Streamlit rodando localmente.
+**Interface**: o [GIF do topo](evidencias/gifs/produto.gif) (gravado com `scripts/gravar_gif.py`) e as capturas [`ui_msd1.png`](evidencias/screenshots/ui_msd1.png) e [`ui_jev.png`](evidencias/screenshots/ui_jev.png), capturadas com Playwright em modo headless contra o Streamlit rodando localmente.
 
 ### Avaliação (secundária)
 
@@ -201,23 +205,23 @@ São 76 turnos fictícios ([`dados/avaliacao.jsonl`](dados/avaliacao.jsonl)): tu
 
 \* Acerto da política: rotear para o rótulo certo, ou clarificar num caso marcado como ambíguo.
 
-Leio isso com cautela: **o conjunto é pequeno e fácil demais para separar os provedores**. Todos acertaram 100% dos casos não ambíguos, e as diferenças estão nos 8 ambíguos, cujo rótulo é discutível. Para mim, a avaliação mostra que a arquitetura funciona com qualquer um dos três. Ela não mostra qual é melhor. A comparação séria está na POC seguinte.
+Leio isso com cautela: **o conjunto é pequeno e fácil demais para separar os provedores**. Todos acertaram 100% dos casos não ambíguos, e as diferenças estão nos 8 ambíguos, cujo rótulo é discutível. Para mim, a avaliação mostra que a arquitetura funciona com qualquer um dos três. Ela não mostra qual é melhor.
 
 ### Custo
 
 | | US$ |
 |---|---|
-| Ledger local (`runs/ledger.json`, 469 chamadas) | 0,0690 |
-| Gemini 3.5 Flash Lite (subagentes + classificador LLM) | 0,0648 |
+| Ledger local (`runs/ledger.json`, 479 chamadas, incluindo a gravação do GIF) | 0,0709 |
+| Gemini 3.5 Flash Lite (subagentes + classificador LLM) | 0,0667 |
 | Jev | 0,0029 |
-| MSD1 | 0,0012 |
-| Diferença no `GET /api/v1/key` antes/depois | 0,0672 |
+| MSD1 | 0,0013 |
+| Diferença no `GET /api/v1/key` antes/depois | 0,0709 |
 
-O teto da POC era **US$3** (com parada em US$2,80). O ledger reserva o custo máximo estimado antes de cada chamada e registra o `usage.cost` real depois. Ele ficou um pouco acima do valor reportado pela conta, o que é o lado seguro do erro.
+O teto da POC era **US$3** (com parada em US$2,80). O ledger reserva o custo máximo estimado antes de cada chamada e registra o `usage.cost` real depois. No fim, o ledger bateu com o valor reportado pela conta.
 
 ## Lições que eu tirei
 
-1. **O roteador é a parte fácil; o subagente é a difícil.** Os dois modelos de decisão quase não erraram a intenção. Os problemas que eu vi estavam nas respostas: o Flash Lite chamou `atualizar_endereco` com um endereço provisório antes de o cliente informar o novo (corrigi com uma regra na docstring da ferramenta) e, num turno, repetiu que o pagamento tinha sido via Pix quando o cliente disse "cartão" (aí o dado do sistema estava certo).
+1. **O roteador é a parte fácil; o subagente é a difícil.** Os dois modelos de decisão quase não erraram a intenção. Os problemas que eu vi estavam nas respostas: o Flash Lite chamou `atualizar_endereco` com um endereço provisório antes de o cliente informar o novo (corrigi com uma regra na docstring da ferramenta) e, num turno, repetiu que o pagamento tinha sido via Pix quando o cliente disse "cartão" (aí o dado do sistema estava certo). Na gravação do GIF, o financeiro abriu um chamado de "cobrança duplicada" para o pedido 10418 sem conferir que a base registra só uma cobrança; eu deixei o GIF sem cortes justamente para mostrar isso. O próximo passo seria a ferramenta recusar o chamado quando o dado não confirma a duplicidade.
 2. **O agente de clarificação desobedece.** Mesmo com "NÃO responda ao mérito", o Flash Lite às vezes respondeu à pergunta de reembolso em vez de esclarecer, inclusive com prazo impreciso, já que ele não tem ferramentas. Na próxima versão eu faria a clarificação sem LLM (pergunta montada a partir dos dois candidatos mais prováveis) ou passaria só a última mensagem para ele.
 3. **O τ é por provedor, não por arquitetura.** O MSD1 é bem mais "decidido" que o Jev. Com o mesmo τ, o Jev pede esclarecimento cinco vezes mais. Se eu fosse trocar de provedor em produção, recalibraria o τ num conjunto de validação antes.
 4. **Mandar o histórico para o modelo de decisão é essencial.** Sem ele, "pode abrir sim" ou "tem protocolo?" não têm intenção. Com 6 turnos de contexto, os 12 follow-ups do conjunto foram 100% roteados pelos três provedores.
@@ -232,7 +236,3 @@ O teto da POC era **US$3** (com parada em US$2,80). O ledger reserva o custo má
 - A memória (`MemorySaver`) fica em processo. Em produção eu trocaria por um checkpointer persistente (Postgres/Redis).
 - O endpoint de decisões do OpenRouter está em **alpha**. O contrato pode mudar, e por isso o fallback para um classificador LLM existe.
 - Não implementei handoff "dentro" do subagente (ex.: o financeiro devolvendo para a devolução). Toda troca passa pelo classificador no turno seguinte.
-
-## Próximo artigo
-
-Na [POC `poc-modelos-de-decisao`](https://github.com/gabrielcaiana/poc-modelos-de-decisao), eu levo o MSD1 para a medição: calibração do τ num split separado, avaliação em holdout, uma segunda camada que escolhe o modelo gerativo pela complexidade da mensagem e a análise de custo × qualidade em 1000 conversas.
