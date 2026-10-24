@@ -1,11 +1,13 @@
 """Capabilities de assinatura, offline: o modelo de decisão é um dublê e nada chama a API."""
+import json
 import pytest
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage
 
 from roteador.assinaturas import ASSINATURAS, resetar
-from roteador.capabilities import PERGUNTA as PERGUNTA_CAPABILITY, atender
-from roteador.decisao import PERGUNTA, ClassificadorIntencao, ProvedorOpenRouterDecisao
+from roteador.capabilities import PERGUNTA as PERGUNTA_CAPABILITY, REGISTRO, atender
+from roteador.config import ROOT
+from roteador.decisao import INTENCOES, PERGUNTA, ClassificadorIntencao, ProvedorOpenRouterDecisao
 from roteador.grafo import construir_grafo, conversar
 from roteador.orcamento import LedgerMemoria
 
@@ -35,6 +37,19 @@ def est(texto, historico=None):
 class FakeLLM(FakeMessagesListChatModel):
     def bind_tools(self, tools, **kw):
         return self
+
+
+def test_conjunto_de_avaliacao_tem_rotulos_validos():
+    linhas = [json.loads(l) for l in (ROOT / "dados/avaliacao_capabilities.jsonl").read_text().splitlines() if l.strip()]
+    assert len(linhas) == 27 and len({l["id"] for l in linhas}) == 27
+    for l in linhas:
+        assert l["rotulo_intencao"] in INTENCOES
+        if l["rotulo_capability"]:
+            assert l["rotulo_capability"] in REGISTRO and not l["ambigua"]
+        if l["ambigua"]:
+            assert l["rotulo_intencao"] == "assinatura" and l["rotulo_capability"] is None
+        if l["pendente"]:
+            assert l["pendente"] in REGISTRO
 
 
 def test_assinatura_e_capability_sao_perguntas_diferentes():

@@ -58,6 +58,22 @@ Se a capability está escolhida e falta um argumento, nada é executado. O estad
 
 A resposta não passa por um LLM. Ela sai do resultado da função (`Cancelei a assinatura 50021...`, protocolo `CAN-50021-001`). Os dados mudam na memória do processo; reiniciar o programa volta à base fictícia.
 
+## Avaliação (24/10/2026)
+
+O fluxo está medido em [`dados/avaliacao_capabilities.jsonl`](../dados/avaliacao_capabilities.jsonl) (27 turnos) e o resultado em [`evidencias/avaliacao_capabilities/resumo.json`](../evidencias/avaliacao_capabilities/resumo.json). τ = 0,75. A medição chama o modelo de decisão e não executa a função.
+
+| Provedor | Intenção top-1 (27) | Capability top-1 (20) | Política da capability (22) | Caminho completo (27) | Custo |
+|---|---|---|---|---|---|
+| MSD1 | 92,6% | 95,0% | 86,4% | 77,8% | US$0,0006 |
+| Jev | 96,3% | 100% | 95,5% | 92,6% | US$0,0013 |
+| LLM | 100% | 100% | 95,5% | 96,3% | US$0,0223 |
+
+Caminho completo: a primeira decisão acerta a intenção e, na assinatura, a política da capability acerta o rótulo. Nos ambíguos, a capability não executa. A segunda pergunta, sozinha, vai melhor do que o turno inteiro: "quando chega a próxima entrega da 50022?" vira suporte na primeira decisão e `consultar_assinatura` na segunda. Os 76 turnos antigos, refeitos com a intenção nova no critério, não foram para `assinatura`. Detalhe e a repetição dos 76 estão no README.
+
+```bash
+python scripts/avaliar_capabilities.py
+```
+
 ## Como testar
 
 Os testes não chamam a API:

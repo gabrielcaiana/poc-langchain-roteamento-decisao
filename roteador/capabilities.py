@@ -225,21 +225,30 @@ def _esclarecer(decisao) -> str:
     return "O que você quer fazer na assinatura: cancelar, trocar o produto, pausar ou mudar a entrega?"
 
 
-def atender(provedor, estado: dict, tau: float, pendente: str | None) -> dict:
-    """Escolhe uma capability e executa, pede o que falta, ou esclarece. Sem LLM gerativo."""
-    decisao = provedor.decidir(estado, PERGUNTA)
+def politica_capability(decisao, estado: dict, tau: float, pendente: str | None):
+    """A mesma ideia da política de roteamento, agora sobre capabilities.
+    Devolve (nome ou None, motivo). None pede esclarecimento e não executa."""
     ultima = estado.get("ultima_mensagem_cliente") or ""
     blob = textos_cliente(estado)
     if decisao.confianca >= tau and decisao.intencao in REGISTRO:
-        nome, motivo = decisao.intencao, "confiante"
-    elif pendente and _so_preenche(pendente, blob, ultima):
-        nome, motivo = pendente, "pendente"
-    elif pendente and decisao.intencao == pendente:
-        nome, motivo = pendente, "continuidade"
-    else:
+        return decisao.intencao, "confiante"
+    if pendente and _so_preenche(pendente, blob, ultima):
+        return pendente, "pendente"
+    if pendente and decisao.intencao == pendente:
+        return pendente, "continuidade"
+    return None, "baixa_confianca"
+
+
+def atender(provedor, estado: dict, tau: float, pendente: str | None) -> dict:
+    """Escolhe uma capability e executa, pede o que falta, ou esclarece. Sem LLM gerativo."""
+    decisao = provedor.decidir(estado, PERGUNTA)
+    nome, motivo = politica_capability(decisao, estado, tau, pendente)
+    if nome is None:
         pacote = _pacote(None, "baixa_confianca", decisao, False, pendente=None)
         pacote["resposta"] = _esclarecer(decisao)
         return pacote
+    ultima = estado.get("ultima_mensagem_cliente") or ""
+    blob = textos_cliente(estado)
 
     args, faltando = montar_args(nome, blob, ultima)
     if faltando:
