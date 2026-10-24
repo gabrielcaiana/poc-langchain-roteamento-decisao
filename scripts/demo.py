@@ -61,6 +61,9 @@ def main():
             extra = (f" fallback: {d['extras']['fallback_motivo']}" if "fallback_motivo" in d["extras"] else "") + \
                     (f" braço A/B: {d['extras']['ab_braco']}" if "ab_braco" in d["extras"] else "")
             print(f"\n👤 {txt}\n   ↳ [{d['provedor']}] {probs} | conf={d['confianca']:.2f} τ={d['tau']} → {d['destino']} ({d['motivo']}){extra}")
+            if d.get("capability"):
+                c = d["capability"]
+                print(f"   ↳ capability: {c['nome']} ({c['motivo']}, conf={c['confianca']:.2f}, executada={c['executada']})")
             if d["ferramentas"]:
                 print("   ↳ ferramentas: " + "; ".join(f"{f['ferramenta']}({json.dumps(f['args'], ensure_ascii=False)})" for f in d["ferramentas"]))
             print(f"🤖 [{d['destino']}] {resp}")

@@ -19,6 +19,7 @@ def mensagens(item):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--provedores", nargs="+", default=["msd1", "jev", "llm"])
+    ap.add_argument("--saida", default="evidencias/avaliacao")
     a = ap.parse_args()
     itens = [json.loads(l) for l in (ROOT / "dados/avaliacao.jsonl").read_text().splitlines()]
     led = Ledger(); llm = criar_llm(led); tau = CONFIG["decisao"]["tau"]
@@ -46,7 +47,7 @@ def main():
                         "acuracia_por_classe": por_classe,
                         "latencia_mediana_ms": round(statistics.median(lat)), "custo_usd": round(led.gasto - g0, 6)}
         print(nome, json.dumps(resumo[nome], ensure_ascii=False))
-    out = ROOT / "evidencias/avaliacao"; out.mkdir(parents=True, exist_ok=True)
+    out = ROOT / a.saida; out.mkdir(parents=True, exist_ok=True)
     (out / "resumo.json").write_text(json.dumps({"tau": tau, "data": time.strftime("%Y-%m-%d %H:%M %z"), "provedores": resumo}, indent=2, ensure_ascii=False))
     (out / "predicoes.jsonl").write_text("\n".join(json.dumps(l, ensure_ascii=False) for l in linhas) + "\n")
     print(f"ledger acumulado: US${led.gasto:.4f}")

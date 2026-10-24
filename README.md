@@ -32,8 +32,13 @@ flowchart LR
     T --> S["suporte<br/>buscar_pedido · atualizar_endereco"]
     T --> F["financeiro<br/>buscar_pedido · consultar_politica · abrir_chamado_financeiro"]
     T --> O["fora_de_escopo<br/>(agente sem ferramentas)"]
-    K --> D & S & F
-    D & S & F & O & Q --> R(["Resposta + estado salvo (checkpointer)"])
+    T --> AS["assinatura"]
+    AS --> SC["segunda decisão<br/>qual capability"]
+    SC -->|"conf ≥ τ e argumentos ok"| EX["executa a capability<br/>cancelar · pausar · retomar · pular · frequência · endereço · trocar · incluir · consultar"]
+    SC -->|"falta argumento"| PD["pede o dado<br/>capability_pendente"]
+    SC -->|"conf < τ"| KC["pergunta entre as duas mais prováveis"]
+    K --> D & S & F & AS
+    D & S & F & O & Q & EX & PD & KC --> R(["Resposta + estado salvo (checkpointer)"])
     subgraph P["Provedores de decisão (flag em config/config.json)"]
       M1["msd1 · microsoft/microsoft-decision-1"]
       J["jev · typesafe/jev-1.13"]
@@ -42,11 +47,12 @@ flowchart LR
       AB["ab: msd1 | jev por conversa"]
     end
     C -.usa.-> P
+    SC -.usa.-> P
 ```
 
 </details>
 
-O LangGraph aqui faz **só orquestração de handoff**: um nó `classificar` e um nó por subagente, cada um terminando em `END`. O grafo não modela etapas do atendimento; a "etapa" em que a conversa está fica no histórico de mensagens, e quem cuida dela é o subagente.
+O LangGraph aqui faz **só orquestração de handoff**: um nó `classificar` e um nó por subagente, cada um terminando em `END`. O grafo não modela etapas do atendimento; a "etapa" em que a conversa está fica no histórico de mensagens, e quem cuida dela é o subagente. A exceção é `assinatura`: em vez de um ReAct, o mesmo provedor responde uma segunda pergunta (qual capability) e uma função executa. O GIF animado acima mostra o handoff entre subagentes; o Mermaid inclui esse segundo passo. O cenário, os números fictícios e o critério de cada capability estão em [`docs/capabilities.md`](docs/capabilities.md).
 
 ### Um turno, passo a passo
 
@@ -78,9 +84,36 @@ sequenceDiagram
 
 </details>
 
+No turno de assinatura a segunda pergunta usa o mesmo endpoint e a mesma chave `questions.intencao`. O que muda é o critério: as capabilities, não os especialistas.
+
+[![Diagrama sequencia-capability](evidencias/diagramas/sequencia-capability.png)](evidencias/diagramas/sequencia-capability.svg)
+
+<details><summary>Fonte Mermaid</summary>
+
+```mermaid
+sequenceDiagram
+    participant Cli as Cliente
+    participant G as LangGraph (thread_id)
+    participant CI as ClassificadorIntencao
+    participant DP as Provedor (MSD1/Jev)
+    participant CAP as Função da capability
+    Cli->>G: "cancela a assinatura 50021"
+    G->>CI: mensagens, agente_atual, conversa_id
+    CI->>DP: POST /api/alpha/decisions, critérios dos especialistas
+    DP-->>CI: assinatura 0.99
+    CI-->>G: politica_roteamento τ=0.75 → assinatura
+    G->>DP: POST /api/alpha/decisions, critérios das capabilities
+    DP-->>G: cancelar_assinatura 0.97
+    G->>CAP: cancelar(50021)
+    CAP-->>G: status cancelada + protocolo
+    G-->>Cli: texto montado do resultado (sem LLM gerativo)
+```
+
+</details>
+
 ### Por que LangChain + LangGraph (em Python)
 
-- **LangGraph** me dá, de graça, o que um chatbot multi-turno precisa e que eu não queria reescrever: estado tipado com reducers (`add_messages`), **checkpointer** por `thread_id` (memória da conversa) e arestas condicionais para o handoff. Eu usei só isso: o grafo tem dois níveis (decidir → atender).
+- **LangGraph** me dá, de graça, o que um chatbot multi-turno precisa e que eu não queria reescrever: estado tipado com reducers (`add_messages`), **checkpointer** por `thread_id` (memória da conversa) e arestas condicionais para o handoff. No pós-venda o grafo tem dois níveis (decidir → atender). Na assinatura entra um terceiro: decidir a capability e executar a função.
 - **LangChain** padroniza as peças: o classificador é um `Runnable` (aparece em traces e aceita callbacks), as ferramentas são `@tool` e os subagentes saem do `create_react_agent`. Trocar o modelo gerativo é trocar um `ChatOpenAI` apontado para o OpenRouter.
 - **Python**, porque o ecossistema LangGraph é mais maduro em Python e minha POC anterior já era em Python, o que me permitiu reaproveitar dados e conhecimento da API.
 
@@ -115,10 +148,12 @@ roteador/
   grafo.py       # Estado do LangGraph, politica_roteamento, nós e compilação com checkpointer
   agentes.py     # prompts e create_react_agent por subagente
   ferramentas.py # ferramentas simuladas (pedido, política, abrir devolução/chamado, endereço)
+  capabilities.py # capabilities de assinatura: o modelo escolhe, o código executa
+  assinaturas.py  # assinaturas fictícias e as funções das capabilities
   llm.py         # ChatOpenAI → OpenRouter + callback que alimenta o ledger
   orcamento.py   # ledger com teto rígido
   dados_loja.py  # pedidos e política 100% fictícios
-scripts/ demo.py · avaliar.py · chat.py · screenshots.py
+scripts/ demo.py · avaliar.py · avaliar_capabilities.py · chat.py · screenshots.py
 app.py           # interface Streamlit
 ```
 
@@ -158,15 +193,18 @@ def politica_roteamento(decisao, agente_atual, tau):
 
 **5. Subagentes conversacionais.** Cada um é um `create_react_agent` com suas ferramentas. Ele recebe o diálogo (falas do cliente e respostas finais), mas **não** recebe as tool calls dos colegas: assim um agente não vê chamadas a ferramentas que ele nem tem. A resposta volta como `AIMessage(name=<subagente>)`, e o estado guarda `agente_atual` e uma `trilha` com a decisão de cada turno.
 
+**6. Capabilities, só na assinatura.** Devolução, suporte e financeiro continuam subagentes. Se a intenção é `assinatura`, uma segunda decisão escolhe uma capability declarada (cancelar, trocar o produto, assinar outro, pausar, pular entrega, frequência, endereço) e o código executa. A documentação do cenário, dos números fictícios e de como testar está em [`docs/capabilities.md`](docs/capabilities.md).
+
 ## Como rodar
 
 ```bash
 python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 # .env na raiz do projeto (já está no .gitignore): OPENROUTER_API_KEY=...
 # OPENAI_API_KEY no mesmo arquivo também vale, se OPENROUTER_API_KEY não estiver definida
-pytest -q                                 # 13 testes, offline
+pytest -q                                 # 31 testes, offline
 python scripts/demo.py --provedor msd1    # conversas da demo (também: jev | llm | ab | msd1+fallback --simular-queda-msd1)
 python scripts/avaliar.py                 # avaliação de roteamento msd1 × jev × llm
+python scripts/avaliar_capabilities.py    # intenção + capability no conjunto de assinatura
 python scripts/chat.py --provedor jev     # chat no terminal
 streamlit run app.py                      # interface web
 ```
@@ -220,6 +258,26 @@ São 76 turnos fictícios ([`dados/avaliacao.jsonl`](dados/avaliacao.jsonl)): tu
 
 Leio isso com cautela: **o conjunto é pequeno e fácil demais para separar os provedores**. Todos acertaram 100% dos casos não ambíguos, e as diferenças estão nos 8 ambíguos, cujo rótulo é discutível. Para mim, a avaliação mostra que a arquitetura funciona com qualquer um dos três. Ela não mostra qual é melhor.
 
+### Avaliação das capabilities (24/10/2026)
+
+São 27 turnos em [`dados/avaliacao_capabilities.jsonl`](dados/avaliacao_capabilities.jsonl): 20 de assinatura com capability definida, 2 que eu marquei como ambíguos ("mexer na assinatura", "ajustar a assinatura") e 5 que não são assinatura (endereço de pedido, cancelar pedido, cobrança duplicada, devolução, clima). τ = 0,75. A avaliação chama o modelo de decisão e **não executa** a capability. Resultado em [`evidencias/avaliacao_capabilities/resumo.json`](evidencias/avaliacao_capabilities/resumo.json).
+
+| Provedor | Intenção top-1 (27) | Política da intenção (27) | Capability top-1 (20) | Política da capability (22) | Caminho completo (27) | Latência intenção | Latência capability | Custo |
+|---|---|---|---|---|---|---|---|---|
+| MSD1 | 92,6% | 88,9% | 95,0% | 86,4% | 77,8% | 463 ms | 467 ms | US$0,0006 |
+| Jev | 96,3% | 96,3% | 100% | 95,5% | 92,6% | 352 ms | 353 ms | US$0,0013 |
+| LLM (Gemini 3.5 Flash Lite) | 100% | 100% | 100% | 95,5% | 96,3% | 1549 ms | 1679 ms | US$0,0223 |
+
+O caminho completo é o que o grafo faria: a primeira decisão chega na intenção rotulada e, se for assinatura, a política da capability escolhe o rótulo. Nos dois ambíguos, acerto é entrar em assinatura e não executar. A coluna de capability top-1 olha só os 20 não ambíguos, e a política da capability olha os 22 (inclui os ambíguos).
+
+A segunda pergunta acerta mais do que o turno inteiro. Em "quando chega a próxima entrega da 50022?" os três modelos escolhem `consultar_assinatura` na capability, mas a primeira pergunta manda para suporte (MSD1, 0,87) ou clarifica (Jev, 0,70). O grafo nem faz a segunda chamada. "no lugar do café em grãos da 50021 manda sabonete" deixa o MSD1 em devolução com 0,75, e ele clarifica; a capability responderia `trocar_produto` com 0,99. "as próximas entregas da 50021 vão para Rua Harmonia..." o MSD1 fica entre consultar (0,56) e mudar o endereço, e clarifica. "quero a ração da 50022 uma vez por mês" o Jev acerta `alterar_frequencia` com 0,66, abaixo do τ, e clarifica.
+
+Nos ambíguos, o MSD1 executaria `consultar_assinatura` com 0,98 nas duas frases. O LLM faz o mesmo em "mexer" (0,80) e clarifica "ajustar". O Jev clarifica os dois. Consultar é uma leitura possível; o rótulo ambíguo é o meu.
+
+Rodei de novo os 76 turnos originais com `assinatura` no critério ([`evidencias/avaliacao_intencao_com_assinatura/resumo.json`](evidencias/avaliacao_intencao_com_assinatura/resumo.json)). Nenhum provedor classificou esses turnos como assinatura. A acurácia dos não ambíguos continuou 100%. A tabela de 12/10 acima continua sendo a rodada original. Nesta repetição o MSD1 ficou em 98,7% (clarificação 0%), o Jev em 94,7% (6,6%) e o LLM em 97,4% (10,5%). A diferença para 12/10 está nos ambíguos e na latência desta execução.
+
+Esta rodada custou US$0,024 no conjunto de capabilities e US$0,030 na repetição dos 76.
+
 ### Custo
 
 | | US$ |
@@ -243,7 +301,7 @@ O teto da POC era **US$3** (com parada em US$2,80). O ledger reserva o custo má
 
 ## Limitações
 
-- **Os dados são 100% fictícios.** Os 76 turnos de avaliação e os rótulos foram escritos com apoio de LLM e **não passaram por revisão humana**. Os casos "ambíguos" refletem o meu julgamento.
+- **Os dados são 100% fictícios.** Os 76 turnos de avaliação e os rótulos foram escritos com apoio de LLM e **não passaram por revisão humana**. Os 27 turnos de capability também são fictícios. Os casos "ambíguos" refletem o meu julgamento.
 - O conjunto é pequeno e não tem poder estatístico para comparar provedores.
 - As ferramentas são simuladas. Não há autenticação do cliente nem efeitos reais.
 - A memória (`MemorySaver`) fica em processo. Em produção eu trocaria por um checkpointer persistente (Postgres/Redis).
