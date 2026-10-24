@@ -162,7 +162,8 @@ def politica_roteamento(decisao, agente_atual, tau):
 
 ```bash
 python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
-export OPENROUTER_API_KEY=...            # nunca vai para o repositório
+# .env na raiz do projeto (já está no .gitignore): OPENROUTER_API_KEY=...
+# OPENAI_API_KEY no mesmo arquivo também vale, se OPENROUTER_API_KEY não estiver definida
 pytest -q                                 # 13 testes, offline
 python scripts/demo.py --provedor msd1    # conversas da demo (também: jev | llm | ab | msd1+fallback --simular-queda-msd1)
 python scripts/avaliar.py                 # avaliação de roteamento msd1 × jev × llm
