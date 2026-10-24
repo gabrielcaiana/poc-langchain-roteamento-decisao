@@ -15,9 +15,10 @@ URL_DECISOES = "https://openrouter.ai/api/alpha/decisions"
 
 INTENCOES = {
     "devolucao": "Devolução, troca, arrependimento, produto com defeito ou errado que o cliente quer devolver/trocar, etiqueta e coleta.",
-    "suporte": "Status e rastreio de pedido, entrega, atraso, extravio, endereço, cancelamento antes do envio, conta/cadastro, uso de produto.",
+    "suporte": "Status e rastreio de pedido avulso, entrega, atraso, extravio, endereço de um pedido, cancelamento antes do envio, conta/cadastro, uso de produto. Não é assinatura recorrente.",
     "financeiro": "Reembolso, cobrança duplicada/indevida, juros, boleto, estorno no cartão ou Pix, valores pagos e devolvidos.",
-    "fora_de_escopo": "Assunto sem relação com pedidos, produtos ou pagamentos da loja.",
+    "assinatura": "Assinatura recorrente: cancelar, pausar, retomar, pular a próxima entrega, mudar frequência, trocar o produto, assinar outro produto ou mudar o endereço das próximas entregas.",
+    "fora_de_escopo": "Assunto sem relação com pedidos, assinaturas, produtos ou pagamentos da loja.",
 }
 PERGUNTA = {"type": "choice",
             "instructions": ("Num atendimento de pós-venda, qual especialista deve responder à ÚLTIMA mensagem do cliente? "
@@ -82,24 +83,26 @@ class ProvedorOpenRouterDecisao:
 
 
 class ProvedorClassificadorLLM:
-    """Plano B: um LLM gerativo com saída estruturada devolvendo uma nota 0-1 por intenção.
+    """Plano B: um LLM gerativo com saída estruturada devolvendo uma nota 0-1 por opção.
+    O schema sai da pergunta recebida, então a mesma classe classifica intenção ou capability.
     Não é calibrado como um modelo de decisão; serve como fallback quando o endpoint alpha falha."""
 
     def __init__(self, llm, nome="llm"):
         self.nome, self.llm = nome, llm
-        schema = {"title": "Classificacao", "type": "object",
-                  "properties": {k: {"type": "number", "description": f"probabilidade 0-1: {v}"} for k, v in INTENCOES.items()},
-                  "required": list(INTENCOES)}
-        self._chain = llm.with_structured_output(schema, method="json_schema")
 
     def decidir(self, estado, pergunta):
+        opcoes = list(pergunta["criteria"])
+        schema = {"title": "Classificacao", "type": "object",
+                  "properties": {k: {"type": "number", "description": f"probabilidade 0-1: {v}"} for k, v in pergunta["criteria"].items()},
+                  "required": opcoes}
+        chain = self.llm.with_structured_output(schema, method="json_schema")
         t0 = time.perf_counter()
         prompt = (f"{pergunta['instructions']}\nOpções: {json.dumps(pergunta['criteria'], ensure_ascii=False)}\n"
                   f"Estado da conversa: {json.dumps(estado, ensure_ascii=False)}\n"
                   "Devolva uma probabilidade por opção (somando 1).")
-        bruto = self._chain.invoke(prompt)
-        s = sum(max(float(bruto.get(k, 0)), 0) for k in INTENCOES) or 1.0
-        probs = {k: round(max(float(bruto.get(k, 0)), 0) / s, 6) for k in INTENCOES}
+        bruto = chain.invoke(prompt)
+        s = sum(max(float(bruto.get(k, 0)), 0) for k in opcoes) or 1.0
+        probs = {k: round(max(float(bruto.get(k, 0)), 0) / s, 6) for k in opcoes}
         top = max(probs, key=probs.get)
         return Decisao(top, probs, probs[top], self.nome, getattr(self.llm, "model_name", "llm"), 0.0,
                        (time.perf_counter() - t0) * 1000, {"custo_no_ledger_via_callback": True})

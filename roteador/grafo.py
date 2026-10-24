@@ -10,10 +10,11 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 
 from .agentes import PROMPTS, criar_agentes
+from .capabilities import atender as atender_capability
 from .config import CONFIG
 from .decisao import ClassificadorIntencao
 
-ESPECIALISTAS = ("devolucao", "suporte", "financeiro")
+ESPECIALISTAS = ("devolucao", "suporte", "financeiro", "assinatura")
 
 
 class Estado(TypedDict, total=False):
@@ -21,6 +22,7 @@ class Estado(TypedDict, total=False):
     agente_atual: str | None                               # quem atendeu o último turno
     decisao: dict                                          # decisão do turno corrente (para trace/UI)
     trilha: Annotated[list[dict], operator.add]            # log de roteamento de todos os turnos
+    capability_pendente: str | None                        # capability escolhida que ainda espera um dado
 
 
 def politica_roteamento(decisao, agente_atual, tau):
@@ -67,16 +69,29 @@ def construir_grafo(classificador: ClassificadorIntencao, llm, tau: float | None
             trilha_extra = {**estado["decisao"], "ferramentas": ferramentas}
             return {"messages": [final],
                     "agente_atual": nome if nome in ESPECIALISTAS else estado.get("agente_atual"),
+                    "capability_pendente": None,
                     "decisao": trilha_extra}
         return rodar
+
+    def no_assinatura(estado: Estado, config):
+        base = classificador.montar_estado({"mensagens": estado["messages"], "agente_atual": estado.get("agente_atual"),
+                                            "conversa_id": config["configurable"]["thread_id"]})
+        r = atender_capability(classificador.provedor, base, tau, estado.get("capability_pendente"))
+        return {"messages": [AIMessage(content=r["resposta"], name="assinatura")],
+                "agente_atual": "assinatura",
+                "capability_pendente": r["pendente"],
+                "decisao": {**estado["decisao"], "ferramentas": r["ferramentas"], "capability": r["capability"]}}
 
     g = StateGraph(Estado)
     g.add_node("classificar", classificar)
     for nome in PROMPTS:
         g.add_node(nome, no_agente(nome))
         g.add_edge(nome, END)
+    g.add_node("assinatura", no_assinatura)
+    g.add_edge("assinatura", END)
     g.add_edge(START, "classificar")
-    g.add_conditional_edges("classificar", lambda s: s["decisao"]["destino"], {n: n for n in PROMPTS})
+    destinos = {n: n for n in (*PROMPTS, "assinatura")}
+    g.add_conditional_edges("classificar", lambda s: s["decisao"]["destino"], destinos)
     return g.compile(checkpointer=checkpointer or MemorySaver())
 
 

@@ -115,6 +115,8 @@ roteador/
   grafo.py       # Estado do LangGraph, politica_roteamento, nós e compilação com checkpointer
   agentes.py     # prompts e create_react_agent por subagente
   ferramentas.py # ferramentas simuladas (pedido, política, abrir devolução/chamado, endereço)
+  capabilities.py # capabilities de assinatura: o modelo escolhe, o código executa
+  assinaturas.py  # assinaturas fictícias e as funções das capabilities
   llm.py         # ChatOpenAI → OpenRouter + callback que alimenta o ledger
   orcamento.py   # ledger com teto rígido
   dados_loja.py  # pedidos e política 100% fictícios
@@ -158,13 +160,15 @@ def politica_roteamento(decisao, agente_atual, tau):
 
 **5. Subagentes conversacionais.** Cada um é um `create_react_agent` com suas ferramentas. Ele recebe o diálogo (falas do cliente e respostas finais), mas **não** recebe as tool calls dos colegas: assim um agente não vê chamadas a ferramentas que ele nem tem. A resposta volta como `AIMessage(name=<subagente>)`, e o estado guarda `agente_atual` e uma `trilha` com a decisão de cada turno.
 
+**6. Capabilities, só na assinatura.** Devolução, suporte e financeiro continuam subagentes. Se a intenção é `assinatura`, uma segunda decisão escolhe uma capability declarada (cancelar, trocar o produto, assinar outro, pausar, pular entrega, frequência, endereço) e o código executa. A documentação do cenário, dos números fictícios e de como testar está em [`docs/capabilities.md`](docs/capabilities.md).
+
 ## Como rodar
 
 ```bash
 python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
 # .env na raiz do projeto (já está no .gitignore): OPENROUTER_API_KEY=...
 # OPENAI_API_KEY no mesmo arquivo também vale, se OPENROUTER_API_KEY não estiver definida
-pytest -q                                 # 13 testes, offline
+pytest -q                                 # 30 testes, offline
 python scripts/demo.py --provedor msd1    # conversas da demo (também: jev | llm | ab | msd1+fallback --simular-queda-msd1)
 python scripts/avaliar.py                 # avaliação de roteamento msd1 × jev × llm
 python scripts/chat.py --provedor jev     # chat no terminal

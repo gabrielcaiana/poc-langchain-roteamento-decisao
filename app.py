@@ -8,7 +8,7 @@ from roteador.llm import criar_llm
 from roteador.orcamento import Ledger
 
 st.set_page_config(page_title="LojaExemplo · atendimento", page_icon="💬", layout="wide")
-CORES = {"devolucao": "🟣", "suporte": "🔵", "financeiro": "🟢", "fora_de_escopo": "⚪", "clarificacao": "🟠"}
+CORES = {"devolucao": "🟣", "suporte": "🔵", "financeiro": "🟢", "assinatura": "🟡", "fora_de_escopo": "⚪", "clarificacao": "🟠"}
 
 
 @st.cache_resource
@@ -43,6 +43,10 @@ with col_rota:
         with st.container(border=True):
             st.markdown(f"**Turno {i}** · `{d['provedor']}` → {CORES[d['destino']]} **{d['destino']}** ({d['motivo']}, τ={d['tau']})")
             st.progress(d["confianca"], text=" · ".join(f"{k} {v:.0%}" for k, v in sorted(d["probabilidades"].items(), key=lambda x: -x[1])))
+            cap = d.get("capability")
+            if cap:
+                st.caption(f"capability `{cap['nome'] or '—'}` ({cap['motivo']}, {cap['confianca']:.0%}"
+                           + (f", falta {', '.join(cap['faltando'])}" if cap.get("faltando") else "") + ")")
             if d["ferramentas"]:
                 st.caption("🛠 " + ", ".join(f["ferramenta"] for f in d["ferramentas"]))
             if "fallback_motivo" in d["extras"]:
