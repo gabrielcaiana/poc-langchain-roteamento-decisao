@@ -1,0 +1,21 @@
+[project]
+name = "poc-langchain-roteamento-decisao"
+version = "0.1.0"
+description = "Chatbot conversacional com LangGraph e subagentes, roteado por modelo de decisão (MSD1/Jev)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Gabriel Caiana" }]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 140
+extend-exclude = ["docs/diagrama/rough.js"]
+
+[tool.ruff.lint]
+select = ["E", "F", "B"]
+# estilo compacto deliberado nos scripts (várias instruções por linha, nomes curtos)
+ignore = ["E401", "E501", "E701", "E702", "E731", "E741"]

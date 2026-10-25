@@ -1,16 +1,70 @@
-# Chatbot conversacional com LangGraph e um modelo de decisão como roteador
+# LangGraph + modelo de decisão: roteamento de intenção para subagentes conversacionais
 
-> Nesta POC eu monto um chatbot de pós-venda **conversacional** (LojaExemplo, loja fictícia) com **subagentes LangChain** (devolução, suporte, financeiro, além de clarificação e fora de escopo), em que o **Microsoft-Decision-1 (MSD1)** decide, a cada mensagem, qual subagente responde. A camada de decisão fica atrás de uma interface de provedor, e eu troco o MSD1 pelo **Jev** (TypeSafe) mudando só uma flag. O objetivo aqui é **arquitetura**, não benchmark de custo ou velocidade. Gastei **US$0,07** de API no total.
+[![tests](https://github.com/gabrielcaiana/poc-langchain-roteamento-decisao/actions/workflows/tests.yml/badge.svg)](https://github.com/gabrielcaiana/poc-langchain-roteamento-decisao/actions/workflows/tests.yml)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
+![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1c3c3c)
+![status](https://img.shields.io/badge/status-POC-orange)
+
+> **TL;DR** — Um chatbot de pós-venda (LojaExemplo, loja **fictícia**) com subagentes LangChain (devolução, suporte, financeiro, clarificação, fora de escopo) em que um **modelo de decisão** (Microsoft-Decision-1, via OpenRouter) escolhe **quem atende cada mensagem**, devolvendo uma **probabilidade por opção**. Essa confiança vira regra de produto: abaixo do limiar τ o bot pergunta em linguagem natural em vez de adivinhar. O provedor de decisão é plugável (MSD1, Jev, LLM com saída estruturada, fallback, A/B). Foco em **arquitetura**, não em benchmark. Gastei **US$0,07** de API.
 
 ![Demonstração real da interface: clarificação, devolução e troca de assunto para o financeiro](evidencias/gifs/produto.gif)
 
-*Gravação real (Streamlit + OpenRouter, sem cortes, 40 s): a primeira mensagem fica abaixo do τ e vira clarificação, a segunda vai para devolução e a terceira troca de assunto para o financeiro. À direita, as probabilidades do MSD1 em cada turno.*
+*Gravação real, sem cortes (Streamlit + OpenRouter, 40 s): 1) "não tô satisfeito" fica abaixo do τ e vira uma pergunta de clarificação; 2) a mensagem seguinte vai para devolução; 3) uma troca de assunto leva ao financeiro. À direita, as probabilidades do MSD1 em cada turno.*
 
-## Por que eu fiz isso
+## Rode em 1 minuto, sem API key
 
-Quase todo tutorial de "multiagente" usa um LLM gerativo como roteador: um prompt "classifique a intenção e responda em JSON". Funciona, mas é caro, mais lento, devolve só um rótulo (sem distribuição de probabilidade) e às vezes quebra o formato. Eu queria saber como ficaria a arquitetura com um **modelo de decisão** no lugar: um modelo que não gera texto, só responde a perguntas tipadas sobre um estado e devolve **uma probabilidade por opção**. Com isso eu ganho um sinal de confiança de verdade para decidir quando pedir esclarecimento.
+```bash
+git clone https://github.com/gabrielcaiana/poc-langchain-roteamento-decisao && cd poc-langchain-roteamento-decisao
+python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt pytest
+pytest -q                           # testes offline (HTTP e LLM são dublês)
+python examples/01_offline_mock.py  # grafo completo: handoff, clarificação, fora de escopo, memória
+```
 
-Uma coisa eu decidi desde o início: **nada de fluxo engessado**. O bot não tem menus, formulários nem uma sequência fixa de passos. O cliente escreve do jeito que quiser, o subagente é um agente de verdade (LLM com ferramentas) que decide sozinho o que perguntar e quando agir, e a cada mensagem o modelo de decisão responde só uma pergunta: *quem atende agora?* Com isso, troca de assunto, follow-up e clarificação acontecem dentro da própria conversa.
+O **modo mock** (`roteador/mock.py`) troca o MSD1 por uma heurística de palavras-chave e o LLM por um dublê com tool calling. Ele serve para ver o fluxo funcionando; **não mede nada** sobre o MSD1 nem sobre LLMs (a saída avisa isso). Para a interface sem chave: `pip install -r requirements-extras.txt && ROTEADOR_MOCK=1 streamlit run app.py` ([screenshot](evidencias/screenshots/ui_mock.png)). Com chave, veja [Como rodar](#como-rodar).
+
+## O problema e por que importa
+
+É comum ver exemplos de "multiagente" que usam um LLM gerativo como roteador: "classifique a intenção e responda em JSON". Funciona, mas tende a devolver só um rótulo, custa mais, é mais lento (nas minhas medições, 897 ms contra ~200 ms) e depende de o formato sair certo. Num atendimento real, a pergunta importante é outra: **o roteador sabe quando não sabe?** Sem uma probabilidade confiável, a decisão de pedir esclarecimento vira heurística de prompt.
+
+Um modelo de decisão não gera texto: responde a perguntas tipadas sobre um estado e devolve a distribuição de probabilidade. Isso dá um contrato estável (sempre no schema), um sinal de confiança utilizável e uma camada barata e rápida na frente dos agentes caros. Esta POC mostra como encaixar isso numa arquitetura LangGraph limpa, trocando de provedor por configuração.
+
+Uma restrição de design desde o início: **nada de fluxo engessado**. Não há menus, formulários nem passos fixos. O cliente escreve como quiser, cada subagente é um agente ReAct de verdade (LLM com ferramentas) que decide o que perguntar e quando agir, e a cada mensagem o modelo de decisão responde só: *quem atende agora?* Troca de assunto, follow-up e clarificação acontecem dentro da conversa.
+
+## Exemplo real de entrada e saída
+
+Turno 2 de uma conversa real com o Jev como provedor (trace completo em [`evidencias/traces/demo_jev.jsonl`](evidencias/traces/demo_jev.jsonl)). O cliente trocou de assunto no meio da conversa (antes falava de entrega):
+
+```text
+cliente:  aproveitando, vi que me cobraram duas vezes esse pedido no pix
+decisão:  financeiro=1.00 devolucao=0.00 suporte=0.00 fora_de_escopo=0.00  (jev-1.13, 156 ms, US$0,000027)
+roteamento: confiança 1.00 ≥ τ 0.75 → financeiro
+ferramentas: buscar_pedido(10405) → consultar_politica → abrir_chamado_financeiro(estorno_duplicidade, R$ 349)
+resposta: Confirmei aqui no sistema a cobrança em duplicidade no seu Pix do pedido 10405. Já abri o chamado
+          financeiro para o estorno de R$ 349,00 (protocolo FIN-10405-001). Conforme a nossa política, o
+          prazo é de até 7 dias úteis após a confirmação. [...]
+```
+
+E um caso de clarificação ([saída completa](evidencias/terminal_demo_msd1_clarificacao.txt)), sem contexto prévio:
+
+```text
+cliente:  não tô satisfeito
+decisão:  devolucao=0.68 fora_de_escopo=0.32  → confiança 0.68 < τ 0.75 → clarificacao
+resposta: Entendo. Para eu te ajudar da melhor forma, você gostaria de falar sobre a devolução de algum produto ou é sobre outro assunto?
+```
+
+## Decisões técnicas principais
+
+| Decisão | Por quê | Onde |
+|---|---|---|
+| Provedor de decisão atrás de um contrato (`decidir(estado, pergunta) -> Decisao`) | MSD1 e Jev falam o mesmo protocolo; trocar é mudar `model`. Fallback e A/B são só composição | [`roteador/decisao.py`](roteador/decisao.py) |
+| Classificador como `Runnable` do LangChain | Entra nos traces, aceita callbacks e compõe com o resto do ecossistema | `ClassificadorIntencao` |
+| LangGraph só para **handoff**, não para etapas | O estado da conversa vive no histórico; quem conduz é o agente | [`roteador/grafo.py`](roteador/grafo.py) |
+| Política de roteamento como função pura (`confiança ≥ τ` / continuidade / clarificação) | Testável sem rede | `politica_roteamento` |
+| Histórico (6 turnos) e "quem está atendendo" vão no `state` da decisão | Follow-ups curtos ("e quanto tempo demora?") dependem de contexto | `montar_estado` |
+| Cada subagente só vê o diálogo, sem tool calls dos colegas | Um agente não herda chamadas a ferramentas que ele não tem | `_so_dialogo` |
+| Ledger de custo com teto rígido, reserva antes de cada chamada | Uma POC não pode estourar orçamento por bug de loop | [`roteador/orcamento.py`](roteador/orcamento.py) |
+| `transporte` injetável | Testes offline, modo mock e simulação de queda do MSD1 sem tocar na rede | `ProvedorOpenRouterDecisao` |
 
 ## Arquitetura
 
@@ -98,11 +152,11 @@ O LLM não ficou atrás em acurácia no meu conjunto (veja a [avaliação](#aval
 
 ## O que é o "Jev" e por que deu para trocar
 
-Eu precisava confirmar se o Jev existia e se era compatível. Existe: é o **`typesafe/jev-1.13`** (alias `~typesafe/jev-latest`), o primeiro modelo "System One" da TypeSafe, lançado em 18/09/2026 e disponível no OpenRouter ([página do modelo](https://openrouter.ai/typesafe/jev-1.13), [documentação](https://openrouter.ai/docs/guides/community/jev)). Chamei os dois com o **mesmo payload** e confirmei que:
+Eu precisava confirmar se o Jev existia e se era compatível. Existe: é o **`typesafe/jev-1.13`** (alias `~typesafe/jev-latest`), o primeiro modelo "System One" da TypeSafe, lançado em 18/09/2026 e disponível no OpenRouter ([página do modelo](https://openrouter.ai/typesafe/jev-1.13), [documentação](https://openrouter.ai/docs/guides/community/jev)). Chamei os dois com o **mesmo payload** (sonda manual, sem log salvo; o que está nos traces são as chamadas das demos) e confirmei que:
 
 - usam o mesmo endpoint, `POST https://openrouter.ai/api/alpha/decisions`, com o mesmo corpo `{model, state, questions}` e os mesmos tipos de pergunta (`choice`, `score`, `noul`);
 - devolvem a mesma resposta: `answers.<pergunta>.{choice, probabilities, confidence}` e `usage.cost`;
-- têm o mesmo preço de tabela (US$0,042/M tokens de entrada, saída grátis). O Jev, porém, contabiliza mais tokens de entrada para o mesmo pedido (379 contra 79 na sonda), por isso saiu cerca de 2,5× mais caro na prática;
+- têm o mesmo preço de tabela (US$0,042/M tokens de entrada, saída grátis). O Jev, porém, contabiliza mais tokens de entrada para o mesmo pedido (mediana de 638 tokens de entrada por chamada no trace do Jev contra 254 no do MSD1, que tem só 3 chamadas; ver [`evidencias/traces/`](evidencias/traces)), por isso saiu cerca de 2,5× mais caro na prática;
 - o Jev também tem uma superfície própria (`/api/v1/systemone`, para o SDK da TypeSafe), que eu não usei. Existe ainda o `typesafe/jev-router`, que é outra coisa: um roteador de **modelos** de chat, não de intenção.
 
 Resultado: para trocar de um para o outro basta mudar o `model`. Na prática, a diferença está na **calibração**. O Jev espalha mais a probabilidade nos casos de fronteira (ex.: `financeiro=0.62, devolucao=0.38`), enquanto o MSD1 tende a ir para 0,99+. Com isso, o mesmo τ gera taxas de clarificação diferentes (1,3% contra 6,6%). **O τ precisa ser calibrado por provedor.**
@@ -111,6 +165,7 @@ Resultado: para trocar de um para o outro basta mudar o `model`. Na prática, a 
 
 ```
 roteador/
+  mock.py        # modo sem API key (dublês determinísticos)
   decisao.py     # Decisao, provedores (OpenRouter decisões, LLM, fallback, A/B), fábrica e ClassificadorIntencao (Runnable)
   grafo.py       # Estado do LangGraph, politica_roteamento, nós e compilação com checkpointer
   agentes.py     # prompts e create_react_agent por subagente
@@ -118,7 +173,9 @@ roteador/
   llm.py         # ChatOpenAI → OpenRouter + callback que alimenta o ledger
   orcamento.py   # ledger com teto rígido
   dados_loja.py  # pedidos e política 100% fictícios
-scripts/ demo.py · avaliar.py · chat.py · screenshots.py
+scripts/ demo.py · avaliar.py · chat.py · screenshots.py · gravar_gif.py
+examples/        # 01 mock offline · 02 live mínimo · 03 plugar provedor novo
+tests/           # 15 testes offline (rodam no CI)
 app.py           # interface Streamlit
 ```
 
@@ -161,14 +218,22 @@ def politica_roteamento(decisao, agente_atual, tau):
 ## Como rodar
 
 ```bash
-python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt
-export OPENROUTER_API_KEY=...            # nunca vai para o repositório
-pytest -q                                 # 13 testes, offline
-python scripts/demo.py --provedor msd1    # conversas da demo (também: jev | llm | ab | msd1+fallback --simular-queda-msd1)
-python scripts/avaliar.py                 # avaliação de roteamento msd1 × jev × llm
-python scripts/chat.py --provedor jev     # chat no terminal
-streamlit run app.py                      # interface web
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt pytest            # núcleo + testes
+pip install -r requirements-extras.txt            # opcional: Streamlit e Playwright
+cp .env.example .env && export OPENROUTER_API_KEY=...   # só para as execuções reais; nunca vai para o repositório
+
+pytest -q                                          # 15 testes, offline
+python examples/01_offline_mock.py                 # sem chave (mock)
+python examples/03_novo_provedor.py                # sem chave: plugar um provedor novo
+python examples/02_live_minimo.py [msd1|jev|llm]   # com chave: 2 turnos reais
+python scripts/demo.py --provedor msd1             # conversas da demo (também: jev | llm | ab | msd1+fallback --simular-queda-msd1)
+python scripts/avaliar.py                          # avaliação de roteamento msd1 × jev × llm (76 turnos)
+python scripts/chat.py --provedor jev              # chat no terminal (--mock para rodar sem chave)
+streamlit run app.py                               # interface web (ROTEADOR_MOCK=1 para rodar sem chave)
 ```
+
+O teto de custo vem de `config/config.json` (`orcamento`) e é aplicado pelo ledger em `runs/ledger.json` antes de cada chamada paga.
 
 ## Evidências (execuções reais, 12/10/2026)
 
@@ -233,12 +298,12 @@ O teto da POC era **US$3** (com parada em US$2,80). O ledger reserva o custo má
 
 ## Lições que eu tirei
 
-1. **O roteador é a parte fácil; o subagente é a difícil.** Os dois modelos de decisão quase não erraram a intenção. Os problemas que eu vi estavam nas respostas: o Flash Lite chamou `atualizar_endereco` com um endereço provisório antes de o cliente informar o novo (corrigi com uma regra na docstring da ferramenta) e, num turno, repetiu que o pagamento tinha sido via Pix quando o cliente disse "cartão" (aí o dado do sistema estava certo). Na gravação do GIF, o financeiro abriu um chamado de "cobrança duplicada" para o pedido 10418 sem conferir que a base registra só uma cobrança; eu deixei o GIF sem cortes justamente para mostrar isso. O próximo passo seria a ferramenta recusar o chamado quando o dado não confirma a duplicidade.
+1. **O roteador é a parte fácil; o subagente é a difícil.** Os dois modelos de decisão quase não erraram a intenção. Os problemas que eu vi estavam nas respostas: o Flash Lite chamou `atualizar_endereco` com um endereço provisório antes de o cliente informar o novo (corrigi com uma regra na docstring da ferramenta; vi isso numa rodada inicial cuja saída não guardei, então não há arquivo de evidência para esse caso) e, num turno, repetiu que o pagamento tinha sido via Pix quando o cliente disse "cartão" (aí o dado do sistema estava certo). Na gravação do GIF, o financeiro abriu um chamado de "cobrança duplicada" para o pedido 10418 sem conferir que a base registra só uma cobrança; eu deixei o GIF sem cortes justamente para mostrar isso. O próximo passo seria a ferramenta recusar o chamado quando o dado não confirma a duplicidade.
 2. **O agente de clarificação desobedece.** Mesmo com "NÃO responda ao mérito", o Flash Lite às vezes respondeu à pergunta de reembolso em vez de esclarecer, inclusive com prazo impreciso, já que ele não tem ferramentas. Na próxima versão eu faria a clarificação sem LLM (pergunta montada a partir dos dois candidatos mais prováveis) ou passaria só a última mensagem para ele.
 3. **O τ é por provedor, não por arquitetura.** O MSD1 é bem mais "decidido" que o Jev. Com o mesmo τ, o Jev pede esclarecimento cinco vezes mais. Se eu fosse trocar de provedor em produção, recalibraria o τ num conjunto de validação antes.
-4. **Mandar o histórico para o modelo de decisão é essencial.** Sem ele, "pode abrir sim" ou "tem protocolo?" não têm intenção. Com 6 turnos de contexto, os 12 follow-ups do conjunto foram 100% roteados pelos três provedores.
+4. **Mandar o histórico para o modelo de decisão é essencial.** Sem ele, "pode abrir sim" ou "tem protocolo?" não carregam intenção por si só (não rodei uma ablação sem histórico). Com 6 turnos de contexto, os 20 turnos do conjunto que dependem de histórico (follow-ups curtos como "pode abrir sim") foram 100% roteados pelos três provedores.
 5. **A regra de "continuidade"** (baixa confiança, mas a mais provável é quem já está atendendo) evita clarificações chatas no meio de um assunto, sem prender a conversa: se a intenção muda com confiança, o handoff acontece.
-6. **Isolar as tool calls entre subagentes** evitou erros de "ferramenta desconhecida" quando um agente herda o histórico de outro.
+6. **Isolar as tool calls entre subagentes** foi uma escolha de design para que um agente não herde chamadas a ferramentas que ele não tem. Não medi o efeito com e sem o isolamento.
 
 ## Limitações
 
@@ -248,3 +313,15 @@ O teto da POC era **US$3** (com parada em US$2,80). O ledger reserva o custo má
 - A memória (`MemorySaver`) fica em processo. Em produção eu trocaria por um checkpointer persistente (Postgres/Redis).
 - O endpoint de decisões do OpenRouter está em **alpha**. O contrato pode mudar, e por isso o fallback para um classificador LLM existe.
 - Não implementei handoff "dentro" do subagente (ex.: o financeiro devolvendo para a devolução). Toda troca passa pelo classificador no turno seguinte.
+
+## Roadmap (o que eu faria a seguir)
+
+- Calibrar o τ **por provedor** num conjunto de validação separado, em vez de um valor único.
+- Clarificação sem LLM (pergunta montada a partir dos dois candidatos mais prováveis) para eliminar o caso em que o agente "responde em vez de perguntar".
+- Validação nas ferramentas: recusar abrir chamado de duplicidade quando o dado do pedido não confirma.
+- Conjunto de avaliação maior e **revisado por humanos**, com mais casos ambíguos e de troca de assunto.
+- Checkpointer persistente (Postgres/Redis) e traces em LangSmith/OpenTelemetry.
+
+## Evidências e licença
+
+Cada número deste README aponta para o arquivo que o gerou em [`EVIDENCIAS.md`](EVIDENCIAS.md). Código sob licença [MIT](LICENSE).

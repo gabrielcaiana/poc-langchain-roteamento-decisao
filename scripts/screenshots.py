@@ -1,5 +1,4 @@
 """Tira screenshots reais da interface Streamlit rodando localmente (playwright headless)."""
-import sys
 from playwright.sync_api import sync_playwright
 
 URL = "http://localhost:8501"

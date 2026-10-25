@@ -1,5 +1,5 @@
 """Grava um GIF real da interface (Streamlit rodando local + chamadas reais ao OpenRouter) com Playwright."""
-import pathlib, shutil, subprocess, time
+import pathlib, shutil, subprocess
 from playwright.sync_api import sync_playwright
 RAIZ = pathlib.Path(__file__).resolve().parents[1]
 VID = RAIZ / "runs/video"; shutil.rmtree(VID, ignore_errors=True)
