@@ -19,5 +19,8 @@ print("LojaExemplo (fictícia) — digite 'sair' para encerrar.")
 while (txt := input("\n👤 ").strip()).lower() not in ("sair", "exit"):
     resp, d = conversar(app, cid, txt)
     print(f"   ↳ {d['provedor']}: {d['destino']} ({d['motivo']}, conf={d['confianca']:.2f})")
+    if d.get("capability"):
+        c = d["capability"]
+        print(f"   ↳ capability: {c['nome']} ({c['motivo']}, conf={c['confianca']:.2f}, executada={c['executada']})")
     print(f"🤖 {resp}")
 print(f"gasto acumulado: US${led.gasto:.4f}")

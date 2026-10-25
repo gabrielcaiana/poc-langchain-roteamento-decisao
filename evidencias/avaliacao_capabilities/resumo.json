@@ -1,0 +1,87 @@
+{
+  "tau": 0.75,
+  "data": "2026-10-24 12:36 -0300",
+  "n": 27,
+  "n_assinatura": 22,
+  "provedores": {
+    "msd1": {
+      "n_intencao": 27,
+      "n_capability": 22,
+      "n_capability_nao_ambiguas": 20,
+      "acuracia_intencao": 0.926,
+      "acerto_politica_intencao": 0.889,
+      "acuracia_capability_top1": 0.95,
+      "acerto_politica_capability": 0.864,
+      "taxa_clarificacao_capability": 0.045,
+      "acuracia_por_capability": {
+        "consultar_assinatura": 1.0,
+        "cancelar_assinatura": 1.0,
+        "pausar_assinatura": 1.0,
+        "retomar_assinatura": 1.0,
+        "pular_proxima_entrega": 1.0,
+        "alterar_frequencia": 1.0,
+        "alterar_endereco_entrega": 0.5,
+        "trocar_produto": 1.0,
+        "incluir_assinatura": 1.0
+      },
+      "latencia_mediana_intencao_ms": 463,
+      "latencia_mediana_capability_ms": 467,
+      "custo_usd": 0.000554,
+      "acerto_caminho_completo": 0.778,
+      "acerto_caminho_completo_assinatura": 0.727
+    },
+    "jev": {
+      "n_intencao": 27,
+      "n_capability": 22,
+      "n_capability_nao_ambiguas": 20,
+      "acuracia_intencao": 0.963,
+      "acerto_politica_intencao": 0.963,
+      "acuracia_capability_top1": 1.0,
+      "acerto_politica_capability": 0.955,
+      "taxa_clarificacao_capability": 0.136,
+      "acuracia_por_capability": {
+        "consultar_assinatura": 1.0,
+        "cancelar_assinatura": 1.0,
+        "pausar_assinatura": 1.0,
+        "retomar_assinatura": 1.0,
+        "pular_proxima_entrega": 1.0,
+        "alterar_frequencia": 1.0,
+        "alterar_endereco_entrega": 1.0,
+        "trocar_produto": 1.0,
+        "incluir_assinatura": 1.0
+      },
+      "latencia_mediana_intencao_ms": 352,
+      "latencia_mediana_capability_ms": 353,
+      "custo_usd": 0.001267,
+      "acerto_caminho_completo": 0.926,
+      "acerto_caminho_completo_assinatura": 0.909
+    },
+    "llm": {
+      "n_intencao": 27,
+      "n_capability": 22,
+      "n_capability_nao_ambiguas": 20,
+      "acuracia_intencao": 1.0,
+      "acerto_politica_intencao": 1.0,
+      "acuracia_capability_top1": 1.0,
+      "acerto_politica_capability": 0.955,
+      "taxa_clarificacao_capability": 0.045,
+      "acuracia_por_capability": {
+        "consultar_assinatura": 1.0,
+        "cancelar_assinatura": 1.0,
+        "pausar_assinatura": 1.0,
+        "retomar_assinatura": 1.0,
+        "pular_proxima_entrega": 1.0,
+        "alterar_frequencia": 1.0,
+        "alterar_endereco_entrega": 1.0,
+        "trocar_produto": 1.0,
+        "incluir_assinatura": 1.0
+      },
+      "latencia_mediana_intencao_ms": 1549,
+      "latencia_mediana_capability_ms": 1679,
+      "custo_usd": 0.022336,
+      "acerto_caminho_completo": 0.963,
+      "acerto_caminho_completo_assinatura": 0.955
+    }
+  },
+  "definicao_caminho_completo": "destino igual à intenção e, na assinatura, a política da capability acerta o rótulo; nos ambíguos, a capability não executa"
+}

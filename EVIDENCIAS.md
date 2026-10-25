@@ -1,6 +1,6 @@
 # Evidências: de onde vem cada número e cada afirmação do README
 
-Tudo abaixo vem de execuções reais feitas em 12/10/2026 (conversas e avaliação) ou do código do repositório. Os dados de loja, pedidos e rótulos são **fictícios**; os rótulos foram escritos com apoio de LLM e **não foram revisados por humanos**.
+Tudo abaixo vem de execuções reais feitas em 12/10/2026 (conversas e avaliação de roteamento), 24/10/2026 (capabilities de assinatura) ou do código do repositório. Os dados de loja, pedidos e rótulos são **fictícios**; os rótulos foram escritos com apoio de LLM e **não foram revisados por humanos**.
 
 ## Números
 
@@ -15,8 +15,11 @@ Tudo abaixo vem de execuções reais feitas em 12/10/2026 (conversas e avaliaç�
 | "~2,5×" mais caro (Jev vs MSD1) | 0,001715 / 0,000687 ≈ 2,5 | idem | idem |
 | Jev usa mais tokens de entrada | mediana 638 (14 chamadas, `demo_jev`) vs 254 (3 chamadas, `demo_msd1`); amostra pequena | [`evidencias/traces/`](evidencias/traces) (`extras.usage.input_tokens`) | `python scripts/demo.py --provedor jev` e `--provedor msd1` |
 | 20/20 turnos com histórico (follow-ups) roteados corretamente | os 3 provedores | [`evidencias/avaliacao/predicoes.jsonl`](evidencias/avaliacao/predicoes.jsonl) cruzado com [`dados/avaliacao.jsonl`](dados/avaliacao.jsonl) (itens com `historico` não vazio; `top1` = `rotulo`) | contagem feita nesta revisão sobre os arquivos salvos |
-| Gasto total da POC | US$0,0709 em 479 chamadas (Gemini 3.5 Flash Lite 0,0667; Jev 0,0029; MSD1 0,0012) | [`runs/ledger.json`](runs/ledger.json) | ledger local, alimentado por `usage.cost` |
-| Ledger bateu com a conta | diferença de US$0,0709 em `GET /api/v1/key` | **sem arquivo**: conferi na hora, comparando o `usage` da chave antes e depois | — |
+| Gasto total da POC (atual) | US$0,1320 em 892 chamadas (Gemini 3.5 Flash Lite 0,1229; Jev 0,0063; MSD1 0,0028); em 12/10 eram US$0,0709 em 479 chamadas | [`runs/ledger.json`](runs/ledger.json) | ledger local, alimentado por `usage.cost` |
+| Ledger bateu com a conta (rodada de 12/10) | diferença de US$0,0709 em `GET /api/v1/key` | **sem arquivo**: conferi na hora, comparando o `usage` da chave antes e depois | — |
+
+| Avaliação das capabilities de assinatura (27 turnos) e tabela do README | ver tabela "Avaliação das capabilities" | [`evidencias/avaliacao_capabilities/resumo.json`](evidencias/avaliacao_capabilities/resumo.json), [`predicoes.jsonl`](evidencias/avaliacao_capabilities/predicoes.jsonl), dados em [`dados/avaliacao_capabilities.jsonl`](dados/avaliacao_capabilities.jsonl) | `python scripts/avaliar_capabilities.py` (adicionado no PR #1, não por esta revisão; eu não conferi esses números) |
+| Repetição dos 76 turnos com `assinatura` no critério | ver README | [`evidencias/avaliacao_intencao_com_assinatura/resumo.json`](evidencias/avaliacao_intencao_com_assinatura/resumo.json) | idem |
 
 ## Demonstrações e traces
 
@@ -30,7 +33,7 @@ Tudo abaixo vem de execuções reais feitas em 12/10/2026 (conversas e avaliaç�
 | Interface rodando | [`gifs/produto.gif`](evidencias/gifs/produto.gif) (gerado por [`scripts/gravar_gif.py`](scripts/gravar_gif.py)), [`screenshots/ui_msd1.png`](evidencias/screenshots/ui_msd1.png), [`ui_jev.png`](evidencias/screenshots/ui_jev.png) |
 | Interface em modo mock (sem chave) | [`screenshots/ui_mock.png`](evidencias/screenshots/ui_mock.png): heurística de palavras-chave, não mede nada |
 | Diagramas | [`gifs/arquitetura.gif`](evidencias/gifs/arquitetura.gif) e [`arquitetura-thumb.png`](evidencias/arquitetura-thumb.png) (fonte em [`docs/diagrama/`](docs/diagrama)); Mermaid renderizado em [`evidencias/diagramas/`](evidencias/diagramas) |
-| Testes | [`tests/test_roteador.py`](tests/test_roteador.py); o CI roda `pytest` e `ruff` sem `OPENROUTER_API_KEY` ([`workflow`](.github/workflows/tests.yml)). A saída da execução de 12/10 está em [`terminal_testes.txt`](evidencias/terminal_testes.txt) (13 testes na época; hoje são 15) |
+| Testes | [`tests/test_roteador.py`](tests/test_roteador.py); o CI roda `pytest` e `ruff` sem `OPENROUTER_API_KEY` ([`workflow`](.github/workflows/tests.yml)). A saída está em [`terminal_testes.txt`](evidencias/terminal_testes.txt) (33 testes, incluindo `tests/test_capabilities.py`; regenerada nesta revisão, a versão anterior listava 13) |
 
 ## Afirmações qualitativas e o que NÃO tem evidência salva
 

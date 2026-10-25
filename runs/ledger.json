@@ -1,9 +1,9 @@
 {
-  "gasto_usd": 0.07091418799999989,
-  "chamadas": 479,
+  "gasto_usd": 0.1319924900000001,
+  "chamadas": 892,
   "por_modelo": {
-    "microsoft/microsoft-decision-1": 0.0012677280000000014,
-    "google/gemini-3.5-flash-lite": 0.06671149999999997,
-    "typesafe/jev-1.13": 0.0029349600000000016
+    "microsoft/microsoft-decision-1": 0.0028190399999999936,
+    "google/gemini-3.5-flash-lite": 0.12288290000000004,
+    "typesafe/jev-1.13": 0.0062905500000000085
   }
 }
