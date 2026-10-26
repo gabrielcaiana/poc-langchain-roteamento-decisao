@@ -1,10 +1,11 @@
 """Testes 100% offline: transporte HTTP e LLM são substituídos por dublês."""
+import json
 import pytest
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, HumanMessage
 
 from roteador.decisao import (ClassificadorIntencao, Decisao, ProvedorAB, ProvedorComFallback,
-                              ProvedorOpenRouterDecisao, PERGUNTA)
+                              ProvedorOpenAIDecisao, ProvedorOpenRouterDecisao, PERGUNTA)
 from roteador.grafo import construir_grafo, conversar, politica_roteamento
 from roteador.orcamento import LedgerMemoria, OrcamentoEstourado
 
@@ -37,6 +38,23 @@ def test_mesmo_contrato_para_jev():
     prov = ProvedorOpenRouterDecisao("jev", "typesafe/jev-1.13", LedgerMemoria(),
                                      transporte=lambda c: resposta(P(devolucao=1.0), model="typesafe/jev-1.13-x"))
     assert prov.decidir({}, PERGUNTA).intencao == "devolucao"
+
+
+def test_provedor_openai_usa_saida_estruturada_e_normaliza_probabilidades():
+    led = LedgerMemoria()
+    enviado = []
+    resposta_openai = {
+        "model": "gpt-4.1-mini",
+        "usage": {"input_tokens": 80, "output_tokens": 20, "cost": 3e-6},
+        "output_text": json.dumps({"devolucao": 2, "suporte": 1, "financeiro": 0, "assinatura": 0, "fora_de_escopo": 0}),
+    }
+    prov = ProvedorOpenAIDecisao("gpt-4.1-mini", led, transporte=lambda c: enviado.append(c) or resposta_openai)
+    d = prov.decidir({"conversa_id": "abc", "ultima_mensagem_cliente": "troca"}, PERGUNTA)
+    assert d.provedor == "openai" and d.intencao == "devolucao"
+    assert d.probabilidades["devolucao"] == pytest.approx(2 / 3, abs=1e-6)
+    assert enviado[0]["text"]["format"]["type"] == "json_schema"
+    assert "conversa_id" not in enviado[0]["input"]
+    assert led.gasto == pytest.approx(3e-6)
 
 
 def test_ledger_bloqueia_antes_de_estourar():

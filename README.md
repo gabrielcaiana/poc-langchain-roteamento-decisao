@@ -6,7 +6,7 @@
 ![LangGraph](https://img.shields.io/badge/LangGraph-1.2-1c3c3c)
 ![status](https://img.shields.io/badge/status-POC-orange)
 
-> **TL;DR** — Um chatbot de pós-venda (LojaExemplo, loja **fictícia**) com subagentes LangChain (devolução, suporte, financeiro, clarificação, fora de escopo) em que um **modelo de decisão** (Microsoft-Decision-1, via OpenRouter) escolhe **quem atende cada mensagem**, devolvendo uma **probabilidade por opção**. Essa confiança vira regra de produto: abaixo do limiar τ o bot pergunta em linguagem natural em vez de adivinhar. O provedor de decisão é plugável (MSD1, Jev, LLM com saída estruturada, fallback, A/B). Há também um caminho de **capabilities** para assinaturas (o modelo escolhe a ação, o código executa). Foco em **arquitetura**, não em benchmark. Gastei **US$0,13** de API no total.
+> **TL;DR** — Um chatbot de pós-venda (LojaExemplo, loja **fictícia**) com subagentes LangChain (devolução, suporte, financeiro, clarificação, fora de escopo) em que um **modelo de decisão** (Microsoft-Decision-1 via OpenRouter ou Responses API da OpenAI) escolhe **quem atende cada mensagem**, devolvendo uma **probabilidade por opção**. Essa confiança vira regra de produto: abaixo do limiar τ o bot pergunta em linguagem natural em vez de adivinhar. O provedor de decisão é plugável (MSD1, Jev, OpenAI, LLM com saída estruturada, fallback, A/B). Há também um caminho de **capabilities** para assinaturas (o modelo escolhe a ação, o código executa). Foco em **arquitetura**, não em benchmark. Gastei **US$0,13** de API no total.
 
 ![Demonstração real da interface: clarificação, devolução e troca de assunto para o financeiro](evidencias/gifs/produto.gif)
 
@@ -22,6 +22,8 @@ python examples/01_offline_mock.py  # grafo completo: handoff, clarificação, f
 ```
 
 O **modo mock** (`roteador/mock.py`) troca o MSD1 por uma heurística de palavras-chave e o LLM por um dublê com tool calling. Ele serve para ver o fluxo dos especialistas de pós-venda funcionando; **não mede nada** sobre o MSD1 nem sobre LLMs (a saída avisa isso) e **não cobre** o caminho de assinatura/capabilities, que precisa do modelo de decisão real. Para a interface sem chave: `pip install -r requirements-extras.txt && ROTEADOR_MOCK=1 streamlit run app.py` ([screenshot](evidencias/screenshots/ui_mock.png)). Com chave, veja [Como rodar](#como-rodar).
+
+Para usar a Responses API como provedor de decisão, copie `.env.example` para `.env`, preencha `OPENAI_API_KEY` e selecione `openai` na interface ou execute `python scripts/demo.py --provedor openai`. O modelo padrão é `gpt-4.1-mini` e pode ser alterado em `config/config.json`; a saída é validada pelo schema JSON antes de virar uma decisão.
 
 ## O problema e por que importa
 

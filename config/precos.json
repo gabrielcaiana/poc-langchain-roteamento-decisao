@@ -2,5 +2,6 @@
   "_fonte": "Páginas de modelo do OpenRouter, consultadas em 2026-10-12. O custo real de cada chamada vem de usage.cost; esta tabela só serve para a reserva preventiva do ledger.",
   "microsoft/microsoft-decision-1": {"in": 4.2e-08, "out": 0.0},
   "typesafe/jev-1.13": {"in": 4.2e-08, "out": 0.0},
-  "google/gemini-3.5-flash-lite": {"in": 3e-07, "out": 2.5e-06}
+  "google/gemini-3.5-flash-lite": {"in": 3e-07, "out": 2.5e-06},
+  "gpt-4.1-mini": {"in": 4e-07, "out": 1.6e-06}
 }

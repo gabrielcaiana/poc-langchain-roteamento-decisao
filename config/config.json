@@ -1,8 +1,8 @@
 {
   "decisao": {
     "provedor": "msd1",
-    "_provedores_validos": "msd1 | jev | llm | msd1+fallback | ab",
-    "modelos": {"msd1": "microsoft/microsoft-decision-1", "jev": "typesafe/jev-1.13"},
+    "_provedores_validos": "msd1 | jev | openai | llm | msd1+fallback | ab",
+    "modelos": {"msd1": "microsoft/microsoft-decision-1", "jev": "typesafe/jev-1.13", "openai": "gpt-4.1-mini"},
     "tau": 0.75,
     "historico_turnos": 6,
     "ab_proporcao_jev": 0.5

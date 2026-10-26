@@ -12,6 +12,7 @@ from .config import CONFIG, PRECOS
 from .orcamento import Ledger
 
 URL_DECISOES = "https://openrouter.ai/api/alpha/decisions"
+URL_OPENAI_RESPONSES = "https://api.openai.com/v1/responses"
 
 INTENCOES = {
     "devolucao": "Devolução, troca, arrependimento, produto com defeito ou errado que o cliente quer devolver/trocar, etiqueta e coleta.",
@@ -60,6 +61,25 @@ def _post_openrouter(corpo: dict, timeout=30) -> dict:
             raise RuntimeError(f"HTTP {e.code} no endpoint de decisões: {e.read()[:200]!r}") from None
 
 
+def _post_openai_responses(corpo: dict, timeout=30) -> dict:
+    chave = os.environ.get("OPENAI_API_KEY")
+    if not chave:
+        raise RuntimeError("OPENAI_API_KEY não configurada para o provedor openai")
+    req = urllib.request.Request(
+        URL_OPENAI_RESPONSES, data=json.dumps(corpo).encode(), method="POST",
+        headers={"Authorization": f"Bearer {chave}", "Content-Type": "application/json"},
+    )
+    for tentativa in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            if e.code in (429, 500, 502, 503) and tentativa < 2:
+                time.sleep(2 ** tentativa)
+                continue
+            raise RuntimeError(f"HTTP {e.code} na Responses API da OpenAI: {e.read()[:200]!r}") from None
+
+
 class ProvedorOpenRouterDecisao:
     """Qualquer modelo do endpoint /api/alpha/decisions (MSD1, Jev...). Mesmo contrato: model + state + questions."""
 
@@ -80,6 +100,63 @@ class ProvedorOpenRouterDecisao:
         top = max(probs, key=probs.get)
         return Decisao(top, probs, probs[top], self.nome, r.get("model", self.modelo), custo, lat,
                        {"usage": r.get("usage", {}), "provedor_infra": r.get("provider")})
+
+
+class ProvedorOpenAIDecisao:
+    """Classificação por Responses API com saída JSON estruturada e probabilidades por opção."""
+
+    def __init__(self, modelo: str, ledger: Ledger, transporte: Callable[[dict], dict] = _post_openai_responses):
+        self.nome, self.modelo, self.ledger, self.transporte = "openai", modelo, ledger, transporte
+
+    def decidir(self, estado, pergunta):
+        schema = {
+            "type": "object",
+            "properties": {
+                k: {"type": "number", "minimum": 0, "maximum": 1}
+                for k in pergunta["criteria"]
+            },
+            "required": list(pergunta["criteria"]),
+            "additionalProperties": False,
+        }
+        corpo = {
+            "model": self.modelo,
+            "input": (
+                f"{pergunta['instructions']}\n"
+                f"Critérios: {json.dumps(pergunta['criteria'], ensure_ascii=False)}\n"
+                f"Estado: {json.dumps({k: v for k, v in estado.items() if k != 'conversa_id'}, ensure_ascii=False)}"
+            ),
+            "text": {"format": {"type": "json_schema", "name": "classificacao", "strict": True, "schema": schema}},
+        }
+        tokens_est = len(json.dumps(corpo, ensure_ascii=False)) // 2 + 300
+        preco = PRECOS.get(self.modelo, {}).get("in", 1e-6)
+        self.ledger.reservar(tokens_est * preco * 3)
+        t0 = time.perf_counter()
+        r = self.transporte(corpo)
+        lat = (time.perf_counter() - t0) * 1000
+        usage = r.get("usage", {})
+        custo = float(usage.get("cost") or (
+            usage.get("input_tokens", 0) * PRECOS.get(self.modelo, {}).get("in", 0)
+            + usage.get("output_tokens", 0) * PRECOS.get(self.modelo, {}).get("out", 0)
+        ))
+        self.ledger.registrar(self.modelo, custo)
+        try:
+            texto = r.get("output_text")
+            if not texto:
+                texto = "".join(
+                    parte.get("text", "")
+                    for item in r.get("output", [])
+                    for parte in item.get("content", [])
+                    if parte.get("type") == "output_text"
+                )
+            bruto = json.loads(texto)
+        except (KeyError, TypeError, json.JSONDecodeError) as e:
+            raise RuntimeError("Responses API retornou uma classificação inválida") from e
+        probs = {k: round(max(float(bruto.get(k, 0)), 0), 6) for k in pergunta["criteria"]}
+        total = sum(probs.values()) or 1.0
+        probs = {k: round(v / total, 6) for k, v in probs.items()}
+        top = max(probs, key=probs.get)
+        return Decisao(top, probs, probs[top], self.nome, r.get("model", self.modelo), custo, lat,
+                       {"usage": usage})
 
 
 class ProvedorClassificadorLLM:
@@ -149,8 +226,10 @@ def criar_provedor(nome: str, ledger: Ledger, llm=None, transporte=None):
     kw = {"transporte": transporte} if transporte else {}
     msd1 = lambda: ProvedorOpenRouterDecisao("msd1", m["msd1"], ledger, **kw)
     jev = lambda: ProvedorOpenRouterDecisao("jev", m["jev"], ledger, **kw)
+    openai = lambda: ProvedorOpenAIDecisao(m.get("openai", "gpt-4.1-mini"), ledger, **kw)
     if nome == "msd1": return msd1()
     if nome == "jev": return jev()
+    if nome == "openai": return openai()
     if nome == "llm": return ProvedorClassificadorLLM(llm)
     if nome == "msd1+fallback": return ProvedorComFallback(msd1(), ProvedorComFallback(jev(), ProvedorClassificadorLLM(llm)))
     if nome == "ab": return ProvedorAB(msd1(), jev(), CONFIG["decisao"]["ab_proporcao_jev"])

@@ -25,7 +25,7 @@ def montar(provedor: str):
 
 with st.sidebar:
     st.header("Camada de decisão")
-    provedor = st.selectbox("Provedor", ["msd1", "jev", "msd1+fallback", "ab", "llm"])
+    provedor = st.selectbox("Provedor", ["msd1", "jev", "openai", "msd1+fallback", "ab", "llm"])
     if st.button("Nova conversa") or "cid" not in st.session_state or st.session_state.get("prov") != provedor:
         st.session_state.update(cid=str(uuid.uuid4()), hist=[], prov=provedor)
     app, led = montar(provedor)
