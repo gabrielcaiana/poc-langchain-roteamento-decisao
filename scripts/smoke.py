@@ -1,4 +1,4 @@
-import sys, json; sys.path.insert(0, ".")
+import sys; sys.path.insert(0, ".")
 from roteador.orcamento import Ledger
 from roteador.llm import criar_llm
 from roteador.decisao import criar_provedor, ClassificadorIntencao

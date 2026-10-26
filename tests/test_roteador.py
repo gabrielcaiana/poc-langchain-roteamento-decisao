@@ -1,5 +1,4 @@
 """Testes 100% offline: transporte HTTP e LLM são substituídos por dublês."""
-import itertools
 import pytest
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, HumanMessage
@@ -115,3 +114,21 @@ def test_grafo_multiturno_handoff_clarificacao_e_memoria():
     estado = app.get_state({"configurable": {"thread_id": "conv1"}}).values
     assert [m.name for m in estado["messages"] if isinstance(m, AIMessage)] == destinos
     assert len(estado["trilha"]) == 5
+
+
+def test_modo_mock_roda_o_grafo_sem_api_key(monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    from roteador.mock import montar_app_mock
+    app = montar_app_mock()
+    destinos = [conversar(app, "mock1", t)[1]["destino"] for t in
+                ["meu pedido 10405 não chegou", "me cobraram duas vezes no pix", "hmm", "vai chover amanhã?"]]
+    assert destinos == ["suporte", "financeiro", "clarificacao", "fora_de_escopo"]
+
+
+def test_exemplos_offline_executam(monkeypatch):
+    import pathlib
+    import runpy
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    raiz = pathlib.Path(__file__).resolve().parents[1] / "examples"
+    for nome in ("01_offline_mock.py", "03_novo_provedor.py"):
+        runpy.run_path(str(raiz / nome), run_name="__main__")

@@ -1,0 +1,4 @@
+-r requirements.txt
+# interface web e gravação de GIF/screenshots
+streamlit==1.65.0
+playwright==1.63.0

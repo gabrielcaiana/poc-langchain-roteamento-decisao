@@ -6,9 +6,14 @@ from roteador.grafo import construir_grafo, conversar
 from roteador.llm import criar_llm
 from roteador.orcamento import Ledger
 
-ap = argparse.ArgumentParser(); ap.add_argument("--provedor", default="msd1"); a = ap.parse_args()
-led = Ledger(); llm = criar_llm(led)
-app = construir_grafo(ClassificadorIntencao(criar_provedor(a.provedor, led, llm)), llm)
+ap = argparse.ArgumentParser(); ap.add_argument("--provedor", default="msd1"); ap.add_argument("--mock", action="store_true", help="sem API key (dublês)"); a = ap.parse_args()
+if a.mock:
+    from roteador.mock import montar_app_mock
+    from roteador.orcamento import LedgerMemoria
+    app, led = montar_app_mock(a.provedor), LedgerMemoria()
+else:
+    led = Ledger(); llm = criar_llm(led)
+    app = construir_grafo(ClassificadorIntencao(criar_provedor(a.provedor, led, llm)), llm)
 cid = str(uuid.uuid4())
 print("LojaExemplo (fictícia) — digite 'sair' para encerrar.")
 while (txt := input("\n👤 ").strip()).lower() not in ("sair", "exit"):
